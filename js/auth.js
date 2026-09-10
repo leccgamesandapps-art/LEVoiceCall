@@ -4,6 +4,7 @@
 (function (global) {
   const STORAGE_KEY = 'levc_user';
   const TOKEN_KEY = 'levc_fb_token';
+  const DEFAULT_APP_ID = '1065855442874700';
 
   function getUser() {
     try {
@@ -86,26 +87,9 @@
   }
 
   function loginWithFacebook() {
-    const appId = window.LEVC_FB_APP_ID || localStorage.getItem('levc_fb_app_id');
+    const appId = window.LEVC_FB_APP_ID || localStorage.getItem('levc_fb_app_id') || DEFAULT_APP_ID;
     if (!appId || appId === '0') {
-      const useMock = confirm(
-        'Facebook App ID is not configured.\n\n' +
-        'For production: create a Facebook App, set App ID, and add your domain.\n\n' +
-        'Click OK to use a temporary local demo profile (not real Facebook).'
-      );
-      if (useMock) {
-        const name = prompt('Demo display name:', 'Demo User') || 'Demo User';
-        setUser({
-          userId: 'demo_' + Date.now(),
-          facebookId: 'demo_' + Date.now(),
-          name,
-          profilePicture: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(name) + '&background=5b6af0&color=fff',
-          createdAt: new Date().toISOString()
-        });
-        window.location.replace('/main/main.html');
-        return;
-      }
-      showStatus('Please configure Facebook App ID.', true);
+      showStatus('Facebook App ID is not configured.', true);
       return;
     }
 
