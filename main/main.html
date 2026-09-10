@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Home — LEVoiceCall</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📞</text></svg>" />
+</head>
+<body class="app-body">
+  <aside id="side-menu" class="side-menu" aria-hidden="true">
+    <div class="side-menu-header">
+      <span class="side-logo">LEVoiceCall</span>
+      <button id="close-menu" class="icon-btn" aria-label="Close menu">✕</button>
+    </div>
+    <nav class="side-nav">
+      <a href="/main/main.html" class="side-link active">Home</a>
+      <a href="/main/about.html" class="side-link">About</a>
+      <button id="menu-logout" class="side-link danger">Logout</button>
+    </nav>
+  </aside>
+  <div id="menu-overlay" class="menu-overlay hidden"></div>
+
+  <header class="top-nav">
+    <button id="menu-btn" class="icon-btn" aria-label="Open menu">☰</button>
+    <div class="nav-brand">LEVoiceCall</div>
+    <button id="profile-btn" class="profile-chip" aria-label="Profile">
+      <img id="nav-avatar" src="" alt="" class="avatar" width="32" height="32" />
+      <span id="nav-name">…</span>
+    </button>
+  </header>
+
+  <div id="profile-panel" class="profile-panel hidden" role="dialog" aria-label="Profile">
+    <div class="profile-panel-inner">
+      <img id="panel-avatar" class="avatar-lg" src="" alt="" />
+      <h3 id="panel-name">—</h3>
+      <p id="panel-status" class="status-pill">Authenticated</p>
+      
+      <div class="permissions-section">
+        <h4>Website Permissions</h4>
+        <div class="perm-row"><span>Microphone</span><span id="perm-mic">—</span></div>
+        <div class="perm-row"><span>Camera</span><span id="perm-cam">—</span></div>
+        <div class="perm-row"><span>Notifications</span><span id="perm-notif">—</span></div>
+        <div class="perm-actions">
+          <button id="test-mic" class="btn btn-sm">Test Microphone</button>
+          <button id="test-cam" class="btn btn-sm">Test Camera</button>
+          <button id="enable-notif" class="btn btn-sm">Enable Notifications</button>
+        </div>
+      </div>
+
+      <button id="panel-logout" class="btn btn-danger btn-block">Logout</button>
+      <button id="close-profile" class="btn btn-ghost btn-block">Close</button>
+    </div>
+  </div>
+
+  <main class="home-main">
+    <section class="home-hero">
+      <h1>Start a Call</h1>
+      <p>Create an independent room or join one with a code.</p>
+    </section>
+
+    <div class="home-actions">
+      <button id="btn-create" class="action-card create">
+        <div class="action-icon">＋</div>
+        <div class="action-label">Create</div>
+        <div class="action-desc">New voice or video room</div>
+      </button>
+      <button id="btn-join" class="action-card join">
+        <div class="action-icon">⇢</div>
+        <div class="action-label">Join</div>
+        <div class="action-desc">Enter a join code</div>
+      </button>
+    </div>
+  </main>
+
+  <div id="create-modal" class="modal hidden" role="dialog" aria-labelledby="create-title">
+    <div class="modal-backdrop" data-close="create"></div>
+    <div class="modal-card">
+      <h2 id="create-title">Create a Call</h2>
+      
+      <fieldset class="field">
+        <legend>Call Type</legend>
+        <label class="radio-label"><input type="radio" name="callType" value="voice" checked /> Voice Call</label>
+        <label class="radio-label"><input type="radio" name="callType" value="video" /> Video Call</label>
+      </fieldset>
+
+      <div class="field">
+        <label for="call-name">Call Name <span class="optional">(Optional)</span></label>
+        <input id="call-name" type="text" maxlength="60" placeholder="Leave empty for auto name" />
+      </div>
+
+      <div class="field privacy-fields">
+        <div class="toggle-row">
+          <span>Screenshot Protection</span>
+          <button type="button" id="tog-ss" class="toggle" data-on="false" aria-pressed="false">OFF</button>
+        </div>
+        <div class="toggle-row">
+          <span>Screen Recording Protection</span>
+          <button type="button" id="tog-sr" class="toggle" data-on="false" aria-pressed="false">OFF</button>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="create-cancel" class="btn btn-ghost">Cancel</button>
+        <button id="create-submit" class="btn btn-primary">Create</button>
+      </div>
+      <div id="create-error" class="form-error hidden"></div>
+    </div>
+  </div>
+
+  <div id="join-modal" class="modal hidden" role="dialog" aria-labelledby="join-title">
+    <div class="modal-backdrop" data-close="join"></div>
+    <div class="modal-card">
+      <h2 id="join-title">Join a Call</h2>
+      <div class="field">
+        <label for="join-code">Enter the Code</label>
+        <input id="join-code" type="text" maxlength="12" placeholder="e.g. ABC123" autocomplete="off" style="text-transform:uppercase; letter-spacing:0.12em;" />
+      </div>
+      <div class="modal-actions">
+        <button id="join-cancel" class="btn btn-ghost">Cancel</button>
+        <button id="join-submit" class="btn btn-primary">Join</button>
+      </div>
+      <div id="join-error" class="form-error hidden"></div>
+    </div>
+  </div>
+
+  <div id="perm-modal" class="modal hidden" role="dialog">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <h2 id="perm-title">Permission Required</h2>
+      <p id="perm-msg"></p>
+      <div class="modal-actions">
+        <button id="perm-deny" class="btn btn-ghost">Not Now</button>
+        <button id="perm-allow" class="btn btn-primary">Allow</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/protection.js"></script>
+  <script src="/js/create.js"></script>
+  <script src="/js/join.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
