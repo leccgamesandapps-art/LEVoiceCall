@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="LEVoiceCall — Secure voice & video calls with independent rooms" />
+  <title>LEVoiceCall — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📞</text></svg>" />
+</head>
+<body>
+  <div class="landing">
+    <div class="logo-wrap">
+      <div class="logo-icon" aria-hidden="true">
+        <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+          <rect width="72" height="72" rx="18" fill="url(#g)"/>
+          <path d="M36 18c-6 0-11 5-11 11v6c0 1.1.9 2 2 2h2v8c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-8h2c1.1 0 2-.9 2-2v-6c0-6-5-11-11-11z" fill="#fff"/>
+          <circle cx="28" cy="32" r="2.5" fill="#5b6af0"/>
+          <circle cx="44" cy="32" r="2.5" fill="#5b6af0"/>
+          <defs><linearGradient id="g" x1="0" y1="0" x2="72" y2="72"><stop stop-color="#5b6af0"/><stop offset="1" stop-color="#00c9a7"/></linearGradient></defs>
+        </svg>
+      </div>
+      <h1 class="logo-title">LEVoiceCall</h1>
+      <p class="logo-tagline">Independent voice & video rooms. One code. One call.</p>
+    </div>
+
+    <div class="auth-card">
+      <h2>Welcome</h2>
+      <p class="auth-desc">Sign in with Facebook to create or join secure call rooms.</p>
+      
+      <div id="fb-status" class="fb-status hidden"></div>
+      
+      <button id="fb-login-btn" class="btn btn-facebook" type="button" aria-label="Continue with Facebook">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+        </svg>
+        <span>Continue with Facebook</span>
+      </button>
+
+      <p class="auth-note">We only request your public profile (name & picture). No posts or friends list.</p>
+      
+      <div id="auth-loading" class="auth-loading hidden">
+        <div class="loading-spinner"></div>
+        <span>Signing in…</span>
+      </div>
+    </div>
+
+    <footer class="landing-footer">
+      <span>LEVoiceCall v1.0.0</span>
+      <span>·</span>
+      <a href="/main/about.html">About</a>
+    </footer>
+  </div>
+
+  <div id="fb-root"></div>
+  <script>
+    window.fbAsyncInit = function () {
+      const FB_APP_ID = window.LEVC_FB_APP_ID || localStorage.getItem('levc_fb_app_id') || '';
+      if (!FB_APP_ID) {
+        console.warn('LEVoiceCall: Facebook App ID not configured.');
+      }
+      FB.init({
+        appId: FB_APP_ID || '0',
+        cookie: true,
+        xfbml: false,
+        version: 'v21.0'
+      });
+      FB.AppEvents.logPageView();
+      if (window.LEVCAuth) window.LEVCAuth.onFBReady();
+    };
+    (function (d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+      js = d.createElement(s); js.id = id;
+      js.src = 'https://connect.facebook.net/en_US/sdk.js';
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+  </script>
+  <script src="/js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.LEVCAuth && window.LEVCAuth.isAuthenticated()) {
+        window.location.replace('/main/main.html');
+      }
+    });
+  </script>
+</body>
+</html>
