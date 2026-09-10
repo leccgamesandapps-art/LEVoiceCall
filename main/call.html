@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Call — LEVoiceCall</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/call.css" />
+</head>
+<body class="call-body">
+  <div id="call-app" class="call-app hidden">
+    <header class="call-top">
+      <div class="call-meta">
+        <div class="join-code-box">
+          <span class="code-label">CODE:</span>
+          <strong id="display-code">—</strong>
+          <button id="copy-code" class="btn-copy" title="Copy code">Copy</button>
+        </div>
+        <h1 id="call-name" class="call-name">—</h1>
+        <div class="call-type-badge" id="call-type-badge">Voice</div>
+      </div>
+      <div class="call-creator" id="call-creator">Creator: —</div>
+    </header>
+
+    <div id="media-stage" class="media-stage">
+      <div id="local-wrap" class="video-tile local">
+        <video id="local-video" autoplay playsinline muted></video>
+        <div class="tile-label"><span id="local-label">You</span></div>
+      </div>
+      <div id="remote-container" class="remote-container"></div>
+      <div id="no-participants" class="empty-stage">
+        <p>Waiting for participants…</p>
+        <p class="hint">Share the join code so others can join this room only.</p>
+      </div>
+    </div>
+
+    <aside class="participants-panel">
+      <h3>Participants <span id="part-count">(0)</span></h3>
+      <ul id="participants-list"></ul>
+    </aside>
+
+    <footer class="call-controls">
+      <button id="btn-mic" class="ctrl-btn" aria-label="Toggle microphone" data-active="true">
+        <span class="ctrl-icon">🎤</span>
+        <span class="ctrl-label">Mic</span>
+      </button>
+      <button id="btn-cam" class="ctrl-btn hidden" aria-label="Toggle camera" data-active="true">
+        <span class="ctrl-icon">📷</span>
+        <span class="ctrl-label">Camera</span>
+      </button>
+      <button id="btn-audio" class="ctrl-btn" aria-label="Toggle speaker" data-active="true">
+        <span class="ctrl-icon">🔊</span>
+        <span class="ctrl-label">Audio</span>
+      </button>
+      <button id="btn-leave" class="ctrl-btn leave" aria-label="Leave call">
+        <span class="ctrl-icon">📞</span>
+        <span class="ctrl-label">Leave</span>
+      </button>
+    </footer>
+  </div>
+
+  <div id="call-loading" class="call-overlay">
+    <div class="loading-spinner large"></div>
+    <p>Connecting to call…</p>
+  </div>
+
+  <div id="call-error" class="call-overlay hidden">
+    <h2 id="error-title">Unable to join</h2>
+    <p id="error-msg"></p>
+    <a href="/main/main.html" class="btn btn-primary">Return Home</a>
+  </div>
+
+  <div id="call-shutdown" class="call-overlay hidden">
+    <h2>Call Shut Down</h2>
+    <p>The creator has left the call.</p>
+    <p class="sub">This room is closed and cannot accept new participants.</p>
+    <a href="/main/main.html" class="btn btn-primary">Return</a>
+  </div>
+
+  <div id="leave-modal" class="modal hidden" role="dialog">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <h2>Leave Call?</h2>
+      <p>Are you sure you want to leave this call?</p>
+      <div class="modal-actions">
+        <button id="leave-no" class="btn btn-ghost">No</button>
+        <button id="leave-yes" class="btn btn-danger">Yes</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="perm-modal" class="modal hidden" role="dialog">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <h2 id="perm-title">Permission Required</h2>
+      <p id="perm-msg"></p>
+      <div class="modal-actions">
+        <button id="perm-retry" class="btn btn-primary">Try Again</button>
+        <a href="/main/main.html" class="btn btn-ghost">Cancel</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/protection.js"></script>
+  <script src="/js/call.js"></script>
+</body>
+</html>
