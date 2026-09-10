@@ -30,18 +30,14 @@
     <div class="auth-card">
       <h2>Welcome</h2>
       <p class="auth-desc">Sign in with Facebook to create or join secure call rooms.</p>
-      
       <div id="fb-status" class="fb-status hidden"></div>
-      
       <button id="fb-login-btn" class="btn btn-facebook" type="button" aria-label="Continue with Facebook">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
         </svg>
         <span>Continue with Facebook</span>
       </button>
-
       <p class="auth-note">We only request your public profile (name & picture). No posts or friends list.</p>
-      
       <div id="auth-loading" class="auth-loading hidden">
         <div class="loading-spinner"></div>
         <span>Signing in…</span>
@@ -52,22 +48,18 @@
       <span>LEVoiceCall v1.0.0</span>
       <span>·</span>
       <a href="/main/about.html">About</a>
+      <span>·</span>
+      <a href="/main/about/privacy.html">Privacy</a>
+      <span>·</span>
+      <a href="/main/about/tos.html">Terms</a>
     </footer>
   </div>
 
   <div id="fb-root"></div>
   <script>
     window.fbAsyncInit = function () {
-      const FB_APP_ID = window.LEVC_FB_APP_ID || localStorage.getItem('levc_fb_app_id') || '';
-      if (!FB_APP_ID) {
-        console.warn('LEVoiceCall: Facebook App ID not configured.');
-      }
-      FB.init({
-        appId: FB_APP_ID || '0',
-        cookie: true,
-        xfbml: false,
-        version: 'v21.0'
-      });
+      const FB_APP_ID = window.LEVC_FB_APP_ID || localStorage.getItem('levc_fb_app_id') || '1065855442874700';
+      FB.init({ appId: FB_APP_ID || '0', cookie: true, xfbml: false, version: 'v21.0' });
       FB.AppEvents.logPageView();
       if (window.LEVCAuth) window.LEVCAuth.onFBReady();
     };
