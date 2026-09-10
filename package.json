@@ -1,0 +1,16 @@
+{
+  "name": "levoicecall",
+  "version": "1.0.0",
+  "description": "LEVoiceCall — Independent voice & video call rooms website (Vercel)",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'Static + serverless ready'"
+  },
+  "dependencies": {
+    "@vercel/kv": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
