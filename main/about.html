@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About — LEVoiceCall</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body class="app-body">
+  <aside id="side-menu" class="side-menu" aria-hidden="true">
+    <div class="side-menu-header">
+      <span class="side-logo">LEVoiceCall</span>
+      <button id="close-menu" class="icon-btn" aria-label="Close menu">✕</button>
+    </div>
+    <nav class="side-nav">
+      <a href="/main/main.html" class="side-link">Home</a>
+      <a href="/main/about.html" class="side-link active">About</a>
+      <button id="menu-logout" class="side-link danger">Logout</button>
+    </nav>
+  </aside>
+  <div id="menu-overlay" class="menu-overlay hidden"></div>
+
+  <header class="top-nav">
+    <button id="menu-btn" class="icon-btn" aria-label="Open menu">☰</button>
+    <div class="nav-brand">LEVoiceCall</div>
+    <button id="profile-btn" class="profile-chip">
+      <img id="nav-avatar" src="" alt="" class="avatar" width="32" height="32" />
+      <span id="nav-name">…</span>
+    </button>
+  </header>
+
+  <main class="about-main">
+    <article class="about-card">
+      <h1>About LEVoiceCall</h1>
+      <p class="version">Version 1.0.0</p>
+      <p>LEVoiceCall is a browser-based communication website for creating independent voice and video call rooms. Each room has its own unique join code, participants, and privacy settings.</p>
+      
+      <h2>Key Features</h2>
+      <ul>
+        <li>Facebook authentication (public profile only)</li>
+        <li>Multiple simultaneous independent call rooms</li>
+        <li>Voice calls and video calls</li>
+        <li>Unique join codes — one code = one room</li>
+        <li>Best-effort screenshot & screen-recording protection (browser limits apply)</li>
+        <li>Creator ownership: when the creator leaves, only that room shuts down</li>
+        <li>Responsive design for mobile and desktop browsers</li>
+      </ul>
+
+      <h2>Privacy & Permissions</h2>
+      <p>Camera and microphone access are requested only when you create or join a call that needs them. LEVoiceCall never activates devices secretly. All device permissions use standard browser APIs and respect your browser’s security settings.</p>
+
+      <h2>Technology</h2>
+      <p>Built as a real website for Vercel. Uses WebRTC for media, serverless API routes for room state, and the Facebook JavaScript SDK for authentication.</p>
+
+      <p class="note">Note: Full multi-user media requires a secure context (HTTPS) and working STUN/TURN. Configure your Facebook App ID and Vercel environment variables for production use.</p>
+
+      <a href="/main/main.html" class="btn btn-primary">Back to Home</a>
+    </article>
+  </main>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
