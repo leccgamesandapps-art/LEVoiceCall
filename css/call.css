@@ -1,4 +1,4 @@
-/* LEVoiceCall — In-call UI (Messenger-style unified) */
+/* LEVoiceCall — In-call UI */
 
 .call-body {
   height: 100vh;
@@ -30,41 +30,6 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   border-bottom: 1px solid #2e3348;
   z-index: 10;
 }
-
-.top-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.top-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.call-timer {
-  font-family: ui-monospace, monospace;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #a0a8c0;
-  letter-spacing: 0.05em;
-}
-
-.privacy-badge {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: rgba(0, 201, 167, 0.18);
-  color: #00c9a7;
-  border: 1px solid rgba(0, 201, 167, 0.35);
-}
-.privacy-badge.hidden { display: none; }
 
 .join-code-box {
   display: inline-flex;
@@ -143,8 +108,6 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   object-fit: cover;
   background: #000;
 }
-/* Mirror local self-view so it feels natural */
-.video-tile.local video.mirrored,
 .video-tile.local video {
   transform: scaleX(-1);
 }
@@ -201,6 +164,26 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   border: 3px solid #5b6af0;
 }
 
+/* Protection: hide raw video, show watermarked canvas */
+.video-tile video.protect-video-src {
+  position: absolute !important;
+  width: 2px !important;
+  height: 2px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+.video-tile canvas.protect-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  z-index: 1;
+  border-radius: inherit;
+  background: #000;
+}
+
 .remote-container {
   display: flex;
   flex-wrap: wrap;
@@ -231,11 +214,6 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   letter-spacing: 0.2em;
   font-weight: 700;
   color: #7b88f5;
-}
-.hint-sub {
-  margin-top: 10px;
-  font-size: 0.8rem;
-  color: #6b7394;
 }
 
 .participants-panel {
@@ -404,7 +382,8 @@ html.levc-protect-blur .video-tile {
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.72);
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(40px);
   pointer-events: none;
 }
 #levc-protect-veil.on { display: flex; }
@@ -416,7 +395,6 @@ html.levc-protect-blur .video-tile {
   gap: 8px;
   padding: 20px;
 }
-/* Softened watermark */
 #levc-watermark {
   position: fixed;
   inset: 0;
@@ -426,18 +404,20 @@ html.levc-protect-blur .video-tile {
   flex-wrap: wrap;
   align-content: space-around;
   justify-content: space-around;
-  opacity: 0.028;
-  transform: rotate(-18deg) scale(1.15);
+  opacity: 0.08;
+  transform: rotate(-18deg) scale(1.2);
   overflow: hidden;
 }
 #levc-watermark.on { display: flex; }
+#levc-watermark.strong { opacity: 0.14 !important; }
 #levc-watermark span {
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 700;
   color: #fff;
-  padding: 36px 48px;
+  padding: 28px 40px;
   white-space: nowrap;
   user-select: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
 }
 html.levc-ip-protect .media-stage,
 html.levc-ip-protect .video-tile {
