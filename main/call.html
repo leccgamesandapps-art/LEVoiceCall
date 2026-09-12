@@ -10,18 +10,18 @@
   <link rel="stylesheet" href="/css/call.css" />
 </head>
 <body class="call-body">
-  <div id="call-app" class="call-app hidden">
+  <div id="call-shell" class="call-shell">
     <header class="call-top">
-      <div class="call-meta">
-        <div class="join-code-box">
-          <span class="code-label">CODE:</span>
-          <strong id="display-code">—</strong>
-          <button id="copy-code" class="btn-copy" title="Copy code">Copy</button>
-        </div>
-        <h1 id="call-name" class="call-name">—</h1>
-        <div class="call-type-badge" id="call-type-badge">Voice</div>
+      <div class="join-code-box" id="code-bar">
+        <span class="code-label">CODE</span>
+        <strong id="display-code">—</strong>
+        <button type="button" id="copy-code" class="btn-copy">Copy</button>
       </div>
-      <div class="call-creator" id="call-creator">Creator: —</div>
+      <div class="call-title-block">
+        <h1 id="call-name" class="call-name">Connecting…</h1>
+        <span class="call-type-badge" id="call-type-badge">—</span>
+      </div>
+      <div class="call-creator" id="call-creator"></div>
     </header>
 
     <div id="media-stage" class="media-stage">
@@ -31,30 +31,32 @@
       </div>
       <div id="remote-container" class="remote-container"></div>
       <div id="no-participants" class="empty-stage">
-        <p>Waiting for participants…</p>
-        <p class="hint">Share the join code so others can join this room only.</p>
+        <div class="empty-avatar">📞</div>
+        <p class="empty-title">In call</p>
+        <p class="hint">Share this code so others can join this room only:</p>
+        <p class="hint-code" id="hint-code">—</p>
       </div>
     </div>
 
     <aside class="participants-panel">
-      <h3>Participants <span id="part-count">(0)</span></h3>
+      <h3>In this call <span id="part-count">(0)</span></h3>
       <ul id="participants-list"></ul>
     </aside>
 
     <footer class="call-controls">
-      <button id="btn-mic" class="ctrl-btn" aria-label="Toggle microphone" data-active="true">
+      <button type="button" id="btn-mic" class="ctrl-btn" aria-label="Toggle microphone" data-active="true">
         <span class="ctrl-icon">🎤</span>
         <span class="ctrl-label">Mic</span>
       </button>
-      <button id="btn-cam" class="ctrl-btn hidden" aria-label="Toggle camera" data-active="true">
+      <button type="button" id="btn-cam" class="ctrl-btn hidden" aria-label="Toggle camera" data-active="true">
         <span class="ctrl-icon">📷</span>
         <span class="ctrl-label">Camera</span>
       </button>
-      <button id="btn-audio" class="ctrl-btn" aria-label="Toggle speaker" data-active="true">
+      <button type="button" id="btn-audio" class="ctrl-btn" aria-label="Toggle speaker" data-active="true">
         <span class="ctrl-icon">🔊</span>
         <span class="ctrl-label">Audio</span>
       </button>
-      <button id="btn-leave" class="ctrl-btn leave" aria-label="Leave call">
+      <button type="button" id="btn-leave" class="ctrl-btn leave" aria-label="Leave call">
         <span class="ctrl-icon">📞</span>
         <span class="ctrl-label">Leave</span>
       </button>
@@ -64,6 +66,7 @@
   <div id="call-loading" class="call-overlay">
     <div class="loading-spinner large"></div>
     <p>Connecting to call…</p>
+    <p class="sub" id="loading-code-hint"></p>
   </div>
 
   <div id="call-error" class="call-overlay hidden">
@@ -75,7 +78,7 @@
   <div id="call-shutdown" class="call-overlay hidden">
     <h2>Call Shut Down</h2>
     <p>The creator has left the call.</p>
-    <p class="sub">This room is closed and cannot accept new participants.</p>
+    <p class="sub">This room is closed.</p>
     <a href="/main/main.html" class="btn btn-primary">Return</a>
   </div>
 
@@ -85,8 +88,8 @@
       <h2>Leave Call?</h2>
       <p>Are you sure you want to leave this call?</p>
       <div class="modal-actions">
-        <button id="leave-no" class="btn btn-ghost">No</button>
-        <button id="leave-yes" class="btn btn-danger">Yes</button>
+        <button type="button" id="leave-no" class="btn btn-ghost">No</button>
+        <button type="button" id="leave-yes" class="btn btn-danger">Yes</button>
       </div>
     </div>
   </div>
@@ -97,7 +100,7 @@
       <h2 id="perm-title">Permission Required</h2>
       <p id="perm-msg"></p>
       <div class="modal-actions">
-        <button id="perm-retry" class="btn btn-primary">Try Again</button>
+        <button type="button" id="perm-retry" class="btn btn-primary">Try Again</button>
         <a href="/main/main.html" class="btn btn-ghost">Cancel</a>
       </div>
     </div>
