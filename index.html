@@ -29,8 +29,10 @@
 
     <div class="auth-card">
       <h2>Welcome</h2>
-      <p class="auth-desc">Sign in with Facebook or continue as a guest to create or join call rooms.</p>
+      <p class="auth-desc">Sign in to create or join secure call rooms.</p>
+
       <div id="fb-status" class="fb-status hidden"></div>
+
       <button id="fb-login-btn" class="btn btn-facebook" type="button" aria-label="Continue with Facebook">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -44,7 +46,19 @@
         Continue as a Guest
       </button>
 
-      <p class="auth-note">Facebook: public profile only. Guest: choose a display name next.</p>
+      <div class="auth-divider"><span>or</span></div>
+
+      <button id="leid-login-btn" class="btn btn-leid" type="button" aria-label="Continue with LEID">
+        <span class="leid-badge">LEID</span>
+        <span>Continue with LEID</span>
+      </button>
+      <p class="auth-leid-hint">
+        From <a href="https://officialleweb.vercel.app" target="_blank" rel="noopener">OfficialLEWeb</a>
+        — use your LEID account across LE sites.
+      </p>
+
+      <p class="auth-note">Facebook: public profile. Guest: display name next. LEID: OfficialLEWeb account.</p>
+
       <div id="auth-loading" class="auth-loading hidden">
         <div class="loading-spinner"></div>
         <span>Signing in…</span>
@@ -81,7 +95,7 @@
   <script src="/js/auth.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      if (window.LEVCAuth && window.LEVCAuth.isAuthenticated()) {
+      if (window.LEVCAuth && window.LEVCAuth.isAuthenticated() && !window.LEVCAuth.needsGuestName()) {
         window.location.replace('/main/main.html');
       }
     });
