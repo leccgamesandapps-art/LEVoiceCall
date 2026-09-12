@@ -17,10 +17,7 @@
   pointer-events: none;
   transition: opacity 0.25s ease;
 }
-.call-shell.visible {
-  opacity: 1;
-  pointer-events: auto;
-}
+.call-shell.visible { opacity: 1; pointer-events: auto; }
 body.in-call .call-shell { opacity: 1; pointer-events: auto; }
 
 .call-top {
@@ -120,6 +117,14 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   box-shadow: 0 8px 24px rgba(0,0,0,0.5);
   border: 2px solid #5b6af0;
 }
+.video-tile.remote {
+  width: min(100%, 520px);
+  max-height: 55vh;
+  aspect-ratio: 16/10;
+  border-radius: 18px;
+  border: 1px solid rgba(91, 106, 240, 0.35);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
 .video-tile.audio-only {
   aspect-ratio: 1;
   display: grid;
@@ -133,6 +138,27 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   background: linear-gradient(transparent, rgba(0,0,0,0.75));
   font-size: 0.8rem;
   font-weight: 500;
+  z-index: 3;
+}
+.tile-avatar {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #1e2235, #12141c);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #7b88f5;
+  z-index: 2;
+}
+.tile-avatar.show { display: flex; }
+.tile-avatar img {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #5b6af0;
 }
 
 .remote-container {
@@ -218,8 +244,8 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   border: none;
   cursor: pointer;
 }
-.ctrl-btn.muted {
-  background: rgba(255, 92, 122, 0.25);
+.ctrl-btn.muted, .ctrl-btn.off {
+  background: rgba(255, 92, 122, 0.3);
   color: #ff5c7a;
 }
 .ctrl-btn.leave {
@@ -320,7 +346,6 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
 }
 .toast.hidden { display: none !important; }
 
-/* IPCallProtection */
 .levc-protect-blur,
 html.levc-protect-blur .media-stage,
 html.levc-protect-blur .video-tile {
@@ -355,13 +380,13 @@ html.levc-protect-blur .video-tile {
   flex-wrap: wrap;
   align-content: space-around;
   justify-content: space-around;
-  opacity: 0.12;
+  opacity: 0.06;
   transform: rotate(-18deg) scale(1.2);
   overflow: hidden;
 }
 #levc-watermark.on { display: flex; }
 #levc-watermark span {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #fff;
   padding: 24px 40px;
@@ -393,6 +418,31 @@ html.levc-ip-protect .video-tile {
   color: #00c9a7;
 }
 
+.conn-status {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  align-self: flex-start;
+  background: rgba(255, 179, 71, 0.15);
+  color: #ffb347;
+}
+.conn-status[data-state="ok"] {
+  background: rgba(0, 201, 167, 0.18);
+  color: #00c9a7;
+}
+.conn-status[data-state="wait"] {
+  background: rgba(91, 106, 240, 0.18);
+  color: #7b88f5;
+}
+.conn-status[data-state="warn"] {
+  background: rgba(255, 92, 122, 0.18);
+  color: #ff5c7a;
+}
+
+@media (min-width: 700px) {
+  .video-tile.remote { width: min(70vw, 640px); }
+}
 @media (min-width: 900px) {
   .call-shell {
     grid-template-columns: 1fr 260px;
