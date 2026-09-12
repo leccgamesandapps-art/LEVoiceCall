@@ -193,6 +193,14 @@
 .action-label { font-weight: 700; font-size: 1.2rem; }
 .action-desc { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
 
+.home-privacy-note {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 360px;
+  margin-top: -8px;
+}
+
 .about-main {
   padding: 24px 16px 48px;
   max-width: 640px;
@@ -263,6 +271,16 @@ fieldset.field legend {
 .toggle.on {
   background: rgba(0,201,167,0.2);
   color: var(--success);
+}
+.privacy-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.modal-sub {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: -8px 0 16px;
 }
 .modal-actions {
   display: flex;
