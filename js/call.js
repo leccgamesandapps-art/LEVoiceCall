@@ -1,5 +1,5 @@
 /**
- * LEVoiceCall — Call room (WebRTC + one join code = one room)
+ * LEVoiceCall — Call room (WebRTC + adaptive quality + protection)
  */
 (function () {
   if (!window.LEVCAuth?.requireAuth()) return;
@@ -17,10 +17,12 @@
   let micEnabled = true;
   let camEnabled = true;
   let audioOutEnabled = true;
+  let qualityLevel = window.LEVCNetworkQuality?.initFromNetwork?.() || 'medium';
 
   const iceServers = [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' }
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' }
   ];
 
   function paintCode(code) {
@@ -97,11 +99,16 @@
     showShell();
 
     try {
-      const constraints = room.callType === 'video'
-        ? { audio: true, video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } }
-        : { audio: true, video: false };
+      qualityLevel = window.LEVCNetworkQuality?.initFromNetwork?.() || qualityLevel || 'medium';
+      const constraints = window.LEVCNetworkQuality
+        ? window.LEVCNetworkQuality.getConstraints(room.callType, qualityLevel)
+        : (room.callType === 'video'
+          ? { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+              video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24 } } }
+          : { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
       localStream = await navigator.mediaDevices.getUserMedia(constraints);
       startLocalPreview();
+      updateQualityBadge();
     } catch (e) {
       $('perm-modal')?.classList.remove('hidden');
       if ($('perm-title')) {
@@ -111,10 +118,29 @@
       $('perm-retry')?.addEventListener('click', () => location.reload());
     }
 
-    window.LEVCProtection?.start({
-      screenshotProtection: room.screenshotProtection,
-      screenRecordingProtection: room.screenRecordingProtection
-    });
+    const protectOpts = {
+      userLabel: (user.name || 'Guest') + ' · ' + (room.joinCode || joinCode),
+      selectors: ['.media-stage', '.call-shell', '.video-tile', '#remote-container', '#local-wrap']
+    };
+    if (window.IPCallProtection) {
+      window.IPCallProtection.start({
+        screenshotProtection: room.screenshotProtection,
+        screenRecordingProtection: room.screenRecordingProtection
+      }, protectOpts);
+    } else {
+      window.LEVCProtection?.start({
+        screenshotProtection: room.screenshotProtection,
+        screenRecordingProtection: room.screenRecordingProtection
+      }, protectOpts);
+    }
+
+    if (window.LEVCNetworkQuality) {
+      window.LEVCNetworkQuality.startMonitor(peers, (level, info) => {
+        qualityLevel = level;
+        updateQualityBadge(info);
+        window.LEVCNetworkQuality.applyToAllPeers(peers, level);
+      });
+    }
 
     pollTimer = setInterval(syncRoom, 2500);
     room.participants.forEach(p => {
@@ -249,6 +275,8 @@
       }
     };
 
+    window.LEVCNetworkQuality?.applySenderParams?.(pc, qualityLevel);
+
     if (initiator) {
       pc.createOffer()
         .then(o => pc.setLocalDescription(o))
@@ -381,7 +409,23 @@
     peers = {};
     localStream?.getTracks().forEach(t => t.stop());
     localStream = null;
+    window.IPCallProtection?.stop();
     window.LEVCProtection?.stop();
+    window.LEVCNetworkQuality?.stopMonitor();
+  }
+
+  function updateQualityBadge(info) {
+    let el = document.getElementById('net-quality');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'net-quality';
+      el.className = 'net-quality';
+      document.querySelector('.call-top')?.appendChild(el);
+    }
+    const level = (info && info.level) || qualityLevel || 'medium';
+    const label = window.LEVCNetworkQuality?.LEVELS?.[level]?.label || level;
+    el.textContent = 'Net: ' + label;
+    el.dataset.level = level;
   }
 
   init();
