@@ -17,6 +17,7 @@
     </div>
     <nav class="side-nav">
       <a href="/main/main.html" class="side-link">Home</a>
+      <a href="/main/history.html" class="side-link">History</a>
       <a href="/main/about.html" class="side-link active">About</a>
       <button id="menu-logout" class="side-link danger">Logout</button>
     </nav>
@@ -36,26 +37,25 @@
     <article class="about-card">
       <h1>About LEVoiceCall</h1>
       <p class="version">Version 1.0.0</p>
-      <p>LEVoiceCall is a browser-based communication website for creating independent voice and video call rooms. Each room has its own unique join code, participants, and privacy settings.</p>
+      <p>LEVoiceCall is a browser-based communication website for creating independent call rooms. Each room has its own unique join code, participants, and privacy settings.</p>
       
       <h2>Key Features</h2>
       <ul>
         <li>Facebook authentication (public profile only)</li>
         <li>Multiple simultaneous independent call rooms</li>
-        <li>Voice calls and video calls</li>
+        <li>Unified voice + video calls (toggle camera anytime)</li>
         <li>Unique join codes — one code = one room</li>
-        <li>Best-effort screenshot & screen-recording protection (browser limits apply)</li>
+        <li>Call history for created and joined rooms</li>
+        <li>Best-effort screenshot & screen-recording protection</li>
         <li>Creator ownership: when the creator leaves, only that room shuts down</li>
         <li>Responsive design for mobile and desktop browsers</li>
       </ul>
 
       <h2>Privacy & Permissions</h2>
-      <p>Camera and microphone access are requested only when you create or join a call that needs them. LEVoiceCall never activates devices secretly. All device permissions use standard browser APIs and respect your browser’s security settings.</p>
+      <p>Camera and microphone access are requested only when you create or join a call that needs them. LEVoiceCall never activates devices secretly.</p>
 
       <h2>Technology</h2>
       <p>Built as a real website for Vercel. Uses WebRTC for media, serverless API routes for room state, and the Facebook JavaScript SDK for authentication.</p>
-
-      <p class="note">Note: Full multi-user media requires a secure context (HTTPS) and working STUN/TURN. Configure your Facebook App ID and Vercel environment variables for production use.</p>
 
       <a href="/main/main.html" class="btn btn-primary">Back to Home</a>
     </article>
