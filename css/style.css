@@ -162,3 +162,39 @@ input, select, textarea { font-family: inherit; outline: none; }
 }
 .toast.error { border-left: 4px solid var(--danger); }
 .toast.success { border-left: 4px solid var(--success); }
+
+/* Guest login */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.btn-guest {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 14px 20px;
+  background: transparent;
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.btn-guest:hover {
+  border-color: var(--primary);
+  background: rgba(91, 106, 240, 0.1);
+}
