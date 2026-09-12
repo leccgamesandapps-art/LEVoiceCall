@@ -1,7 +1,7 @@
 /**
  * LEVoiceCall Auth — Facebook + Guest + LEID (balanced with OfficialLEWeb)
- * Cross-origin: URL handoff ?leid=&name=&fb= or manual LEID entry.
- * OfficialLEWeb key: officialleweb_session = { leid, facebookId?, ... }
+ * Shared Meta App: LEID ACCOUNT 2338993963576572
+ * Cross-origin LEID: OfficialLEWeb ?return_to= handoff with ?leid=&name=&fb=
  */
 (function (global) {
   const STORAGE_KEY = 'levc_user';
@@ -9,6 +9,7 @@
   const GUEST_PENDING = 'levc_guest_pending';
   const LEID_LINK_KEY = 'levc_leid_link';
   const OFFICIAL_LEWEB = 'https://officialleweb.vercel.app';
+  const FB_APP_ID = '2338993963576572';
 
   function getUser() {
     try {
@@ -143,6 +144,7 @@
         'officialleweb_session',
         JSON.stringify({
           leid,
+          name,
           loggedInAt: Date.now(),
           viaFacebook: !!facebookId,
           facebookId: facebookId || undefined
@@ -201,59 +203,7 @@
     return null;
   }
 
-  function hideLeidModal() {
-    document.getElementById('leid-modal')?.classList.add('hidden');
-  }
-
-  function showLeidModal() {
-    let modal = document.getElementById('leid-modal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'leid-modal';
-      modal.className = 'modal leid-modal';
-      modal.innerHTML =
-        '<div class="modal-backdrop" data-leid-close></div>' +
-        '<div class="modal-card leid-modal-card">' +
-        '<h2>Continue with LEID</h2>' +
-        '<p class="leid-modal-desc">Use the same LEID as on <strong>OfficialLEWeb</strong> so your account matches across sites.</p>' +
-        '<div class="field"><label for="leid-input">LEID / Username</label>' +
-        '<input id="leid-input" type="text" maxlength="40" placeholder="Your LEID" autocomplete="username" /></div>' +
-        '<div class="field"><label for="leid-display">Display name <span class="optional">(optional)</span></label>' +
-        '<input id="leid-display" type="text" maxlength="60" placeholder="Leave empty to use LEID" /></div>' +
-        '<div class="modal-actions">' +
-        '<button type="button" class="btn btn-ghost" data-leid-close>Cancel</button>' +
-        '<button type="button" class="btn btn-primary" id="leid-submit">Sign in with LEID</button>' +
-        '</div>' +
-        '<p class="leid-modal-foot"><a href="' +
-        OFFICIAL_LEWEB +
-        '" target="_blank" rel="noopener">Open OfficialLEWeb</a> to register if you do not have a LEID yet.</p>' +
-        '</div>';
-      document.body.appendChild(modal);
-      modal.querySelectorAll('[data-leid-close]').forEach((el) => {
-        el.addEventListener('click', hideLeidModal);
-      });
-      document.getElementById('leid-submit')?.addEventListener('click', () => {
-        const leid = (document.getElementById('leid-input')?.value || '').trim();
-        if (!leid) {
-          showStatus('Enter your LEID.', true);
-          return;
-        }
-        const name = (document.getElementById('leid-display')?.value || '').trim() || leid;
-        setLEIDUser({ leid, name, from: 'manual' });
-        hideLeidModal();
-        showStatus('Signed in as LEID: ' + leid, false);
-        setTimeout(() => {
-          window.location.replace('/main/main.html');
-        }, 350);
-      });
-      document.getElementById('leid-input')?.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') document.getElementById('leid-submit')?.click();
-      });
-    }
-    modal.classList.remove('hidden');
-    setTimeout(() => document.getElementById('leid-input')?.focus(), 100);
-  }
-
+  /** Real SSO: go to OfficialLEWeb, login, return with ?leid=&name=&fb= */
   function loginWithLEID() {
     let session = consumeLEIDFromURL();
     if (!session) session = readLocalLEIDSession();
@@ -265,20 +215,23 @@
       }, 350);
       return;
     }
-    showLeidModal();
+    const returnUrl = encodeURIComponent(location.origin + '/index.html');
+    window.location.href = OFFICIAL_LEWEB + '/?return_to=' + returnUrl + '&app=levoicecall';
   }
 
   function fetchMe(accessToken) {
-    FB.api('/me', { fields: 'id,name,picture.type(large)' }, function (res) {
+    FB.api('/me', { fields: 'id,name,picture.type(large),email' }, function (res) {
       if (!res || res.error) {
         showStatus('Could not load Facebook profile.', true);
         return;
       }
       const picture = (res.picture && res.picture.data && res.picture.data.url) || '';
-      let leid = null;
+      // Same LEID rule as OfficialLEWeb: Facebook name → LEID
+      let leid = (res.name || '').trim().replace(/\s+/g, '_');
+      if (!leid) leid = 'fb_' + res.id;
       try {
         const link = JSON.parse(localStorage.getItem(LEID_LINK_KEY) || 'null');
-        if (link && link.facebookId && String(link.facebookId) === String(res.id)) {
+        if (link && link.facebookId && String(link.facebookId) === String(res.id) && link.leid) {
           leid = link.leid;
         }
       } catch (e) {}
@@ -287,9 +240,21 @@
         facebookId: res.id,
         name: res.name || 'Facebook User',
         profilePicture: picture,
-        authType: leid ? 'leid' : 'facebook',
+        authType: 'facebook',
         leid: leid
       });
+      try {
+        localStorage.setItem(
+          'officialleweb_session',
+          JSON.stringify({
+            leid,
+            name: res.name || leid,
+            facebookId: res.id,
+            viaFacebook: true,
+            loggedInAt: Date.now()
+          })
+        );
+      } catch (e) {}
       if (accessToken) localStorage.setItem(TOKEN_KEY, accessToken);
       localStorage.removeItem(GUEST_PENDING);
       window.location.replace('/main/main.html');
@@ -297,12 +262,6 @@
   }
 
   function loginWithFacebook() {
-    const appId =
-      window.LEVC_FB_APP_ID || localStorage.getItem('levc_fb_app_id') || '1065855442874700';
-    if (!appId) {
-      showStatus('Please configure Facebook App ID.', true);
-      return;
-    }
     if (typeof FB === 'undefined') {
       showStatus('Facebook SDK still loading. Try again in a moment.', true);
       return;
@@ -321,7 +280,7 @@
           showStatus('Facebook login was cancelled or failed.', true);
         }
       },
-      { scope: 'public_profile' }
+      { scope: 'public_profile,email' }
     );
   }
 
@@ -362,6 +321,7 @@
     randomGuestCode,
     loginWithLEID,
     setLEIDUser,
-    OFFICIAL_LEWEB
+    OFFICIAL_LEWEB,
+    FB_APP_ID
   };
 })(window);
