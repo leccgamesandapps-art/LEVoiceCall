@@ -1,5 +1,5 @@
 /**
- * LEVoiceCall — Call room (WebRTC upgraded)
+ * LEVoiceCall — Unified Messenger-style Call (audio + video)
  */
 (function () {
   if (!window.LEVCAuth?.requireAuth()) return;
@@ -15,6 +15,8 @@
   let isLeaving = false;
   let pollTimer = null;
   let signalTimer = null;
+  let timerInterval = null;
+  let callStartTime = null;
   let micEnabled = true;
   let camEnabled = true;
   let audioOutEnabled = true;
@@ -74,6 +76,18 @@
     el.dataset.state = state || 'info';
   }
 
+  function startCallTimer() {
+    callStartTime = Date.now();
+    const el = $('call-timer');
+    if (!el) return;
+    timerInterval = setInterval(() => {
+      const s = Math.floor((Date.now() - callStartTime) / 1000);
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      el.textContent = String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+    }, 1000);
+  }
+
   async function loadRoom() {
     try {
       const res = await fetch('/api/rooms?code=' + encodeURIComponent(joinCode));
@@ -110,18 +124,34 @@
     }
     setupUI();
     showShell();
+    startCallTimer();
     setConnStatus('Connecting media…', 'wait');
+
+    // Unified: always try audio + video
     try {
       qualityLevel = window.LEVCNetworkQuality?.initFromNetwork?.() || qualityLevel || 'medium';
-      const constraints = window.LEVCNetworkQuality
-        ? window.LEVCNetworkQuality.getConstraints(room.callType, qualityLevel)
-        : room.callType === 'video'
-          ? { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-              video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24 } } }
-          : { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false };
-      localStream = await navigator.mediaDevices.getUserMedia(constraints);
-      // Ensure tracks are enabled
+      let constraints;
+      if (window.LEVCNetworkQuality) {
+        constraints = window.LEVCNetworkQuality.getConstraints('video', qualityLevel);
+      } else {
+        constraints = {
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24 } }
+        };
+      }
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (videoErr) {
+        // Fallback to audio-only if camera fails
+        localStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
+        camEnabled = false;
+      }
       localStream.getTracks().forEach((t) => { t.enabled = true; });
+      if (!camEnabled) {
+        localStream.getVideoTracks().forEach((t) => { t.enabled = false; });
+      }
       startLocalPreview();
       updateQualityBadge();
       setConnStatus(room.participants.length <= 1 ? 'Waiting for others…' : 'Connecting peers…', 'wait');
@@ -131,13 +161,23 @@
       if ($('perm-msg')) $('perm-msg').textContent = humanMediaError(e);
       $('perm-retry')?.addEventListener('click', () => location.reload());
     }
+
     const protectOpts = {
       userLabel: (user.name || 'Guest') + ' · ' + (room.joinCode || joinCode),
       selectors: ['.media-stage', '.call-shell', '.video-tile', '#remote-container', '#local-wrap']
     };
-    const prot = { screenshotProtection: room.screenshotProtection, screenRecordingProtection: room.screenRecordingProtection };
+    const prot = {
+      screenshotProtection: !!room.screenshotProtection,
+      screenRecordingProtection: !!room.screenRecordingProtection
+    };
     if (window.IPCallProtection) window.IPCallProtection.start(prot, protectOpts);
     else window.LEVCProtection?.start(prot, protectOpts);
+
+    // Privacy badge
+    if (room.screenshotProtection || room.screenRecordingProtection) {
+      $('privacy-badge')?.classList.remove('hidden');
+    }
+
     if (window.LEVCNetworkQuality) {
       window.LEVCNetworkQuality.startMonitor(peers, (level, info) => {
         qualityLevel = level;
@@ -154,8 +194,8 @@
 
   function humanMediaError(e) {
     const name = e.name || '';
-    if (name === 'NotAllowedError') return 'Allow microphone/camera in browser settings for LEVoiceCall, then try again.';
-    if (name === 'NotFoundError') return 'No camera or microphone found on this device.';
+    if (name === 'NotAllowedError') return 'Allow microphone (and camera if available) in browser settings for LEVoiceCall, then try again.';
+    if (name === 'NotFoundError') return 'No microphone found on this device.';
     if (name === 'NotReadableError') return 'Device is already in use by another app.';
     if (name === 'SecurityError') return 'Media needs HTTPS (secure connection).';
     return e.message || 'Check device permissions and try again.';
@@ -164,10 +204,10 @@
   function setupUI() {
     paintCode(room.joinCode || joinCode);
     if ($('call-name')) $('call-name').textContent = room.callName || 'Call';
-    if ($('call-type-badge')) $('call-type-badge').textContent = room.callType === 'video' ? 'Video' : 'Voice';
+    if ($('call-type-badge')) $('call-type-badge').textContent = 'Call';
     if ($('call-creator')) $('call-creator').textContent = 'Creator: ' + (room.creatorName || '—');
-    if (room.callType === 'video') $('btn-cam')?.classList.remove('hidden');
-    else $('btn-cam')?.classList.add('hidden');
+    // Camera always available in unified mode
+    $('btn-cam')?.classList.remove('hidden');
     renderParticipants();
   }
 
@@ -217,33 +257,27 @@
     const wrap = $('local-wrap');
     if (!v || !localStream) return;
 
-    // Always mirror local self-view
     v.classList.add('mirrored');
 
     const hasLiveVideo = localStream.getVideoTracks().some(
       (t) => t.enabled && t.readyState === 'live'
     );
 
-    if (room.callType !== 'video' || !hasLiveVideo) {
+    if (!hasLiveVideo || !camEnabled) {
       v.style.display = 'none';
       wrap?.classList.add('audio-only');
       showAvatarOn(wrap, user);
+      $('btn-cam')?.classList.add('off');
     } else {
       v.style.display = '';
       wrap?.classList.remove('audio-only');
       hideAvatarOn(wrap);
       v.srcObject = localStream;
-
-      const tryPlay = () => {
-        v.play().catch(() => {});
-      };
-
-      if (v.readyState >= 2) {
-        tryPlay();
-      } else {
+      const tryPlay = () => { v.play().catch(() => {}); };
+      if (v.readyState >= 2) tryPlay();
+      else {
         v.addEventListener('loadedmetadata', tryPlay, { once: true });
         v.addEventListener('loadeddata', tryPlay, { once: true });
-        // Fallback retry
         setTimeout(tryPlay, 400);
         setTimeout(tryPlay, 1200);
       }
@@ -487,6 +521,7 @@
   function cleanupMedia() {
     clearInterval(pollTimer);
     clearInterval(signalTimer);
+    clearInterval(timerInterval);
     Object.values(peers).forEach((pc) => pc.close());
     peers = {};
     localStream?.getTracks().forEach((t) => t.stop());
