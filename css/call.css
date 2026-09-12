@@ -1,4 +1,4 @@
-/* LEVoiceCall — In-call UI (code always visible) */
+/* LEVoiceCall — In-call UI */
 
 .call-body {
   height: 100vh;
@@ -51,7 +51,7 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   color: #7b88f5;
 }
 .join-code-box strong {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: ui-monospace, monospace;
   font-size: 1.15rem;
   letter-spacing: 0.18em;
   color: #fff;
@@ -73,11 +73,7 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   gap: 10px;
   flex-wrap: wrap;
 }
-.call-name {
-  font-size: 1.15rem;
-  font-weight: 600;
-  margin: 0;
-}
+.call-name { font-size: 1.15rem; font-weight: 600; margin: 0; }
 .call-type-badge {
   font-size: 0.7rem;
   font-weight: 600;
@@ -86,10 +82,7 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   background: rgba(0, 201, 167, 0.15);
   color: #00c9a7;
 }
-.call-creator {
-  font-size: 0.8rem;
-  color: #6b7394;
-}
+.call-creator { font-size: 0.8rem; color: #6b7394; }
 
 .media-stage {
   position: relative;
@@ -326,6 +319,79 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   border-radius: 12px;
 }
 .toast.hidden { display: none !important; }
+
+/* IPCallProtection */
+.levc-protect-blur,
+html.levc-protect-blur .media-stage,
+html.levc-protect-blur .video-tile {
+  filter: blur(28px) brightness(0.35) !important;
+  transition: filter 0.15s ease;
+}
+#levc-protect-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  pointer-events: none;
+}
+#levc-protect-veil.on { display: flex; }
+.levc-protect-msg {
+  text-align: center;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+}
+#levc-watermark {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  pointer-events: none;
+  display: none;
+  flex-wrap: wrap;
+  align-content: space-around;
+  justify-content: space-around;
+  opacity: 0.12;
+  transform: rotate(-18deg) scale(1.2);
+  overflow: hidden;
+}
+#levc-watermark.on { display: flex; }
+#levc-watermark span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  padding: 24px 40px;
+  white-space: nowrap;
+  user-select: none;
+}
+html.levc-ip-protect .media-stage,
+html.levc-ip-protect .video-tile {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.net-quality {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(91, 106, 240, 0.2);
+  color: #7b88f5;
+  align-self: flex-start;
+}
+.net-quality[data-level="low"] {
+  background: rgba(255, 179, 71, 0.2);
+  color: #ffb347;
+}
+.net-quality[data-level="high"] {
+  background: rgba(0, 201, 167, 0.2);
+  color: #00c9a7;
+}
 
 @media (min-width: 900px) {
   .call-shell {
