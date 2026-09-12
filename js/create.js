@@ -120,6 +120,14 @@
       });
     } catch (e) {}
 
+    window.LEVCHistory?.add?.({
+      joinCode,
+      callName: name,
+      role: 'created',
+      creatorName: user.name,
+      at: new Date().toISOString(),
+      status: 'active'
+    });
     close();
     window.location.href = '/main/call.html?call=' + encodeURIComponent(joinCode);
   });

@@ -1,5 +1,5 @@
 /**
- * System B — Join Call (exact one room by code)
+ * Join Call by code
  */
 (function () {
   if (!window.LEVCAuth?.isAuthenticated()) return;
@@ -53,13 +53,15 @@
       }
 
       try {
-        const constraints = room.callType === 'video' ? { audio: true, video: true } : { audio: true };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        stream.getTracks().forEach(t => t.stop());
+        let stream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        } catch (ve) {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+        stream.getTracks().forEach((t) => t.stop());
       } catch (e) {
-        err.textContent = room.callType === 'video'
-          ? 'Camera and microphone access required. Allow permissions and try again.'
-          : 'Microphone access required. Allow permission and try again.';
+        err.textContent = 'Microphone access required. Allow permission and try again.';
         err.classList.remove('hidden');
         return;
       }
@@ -79,6 +81,14 @@
         })
       }).catch(() => {});
 
+      window.LEVCHistory?.add?.({
+        joinCode: code,
+        callName: (room && room.callName) || 'Call',
+        role: 'joined',
+        creatorName: (room && room.creatorName) || '',
+        at: new Date().toISOString(),
+        status: 'active'
+      });
       window.location.href = '/main/call.html?call=' + encodeURIComponent(code);
     } catch (e) {
       const localRooms = JSON.parse(localStorage.getItem('levc_rooms') || '{}');
@@ -88,7 +98,7 @@
         err.classList.remove('hidden');
         return;
       }
-      if (!room.participants.find(p => p.id === user.facebookId)) {
+      if (!room.participants.find((p) => p.id === user.facebookId)) {
         room.participants.push({
           id: user.facebookId,
           name: user.name,
@@ -99,6 +109,14 @@
         localRooms[code] = room;
         localStorage.setItem('levc_rooms', JSON.stringify(localRooms));
       }
+      window.LEVCHistory?.add?.({
+        joinCode: code,
+        callName: (room && room.callName) || 'Call',
+        role: 'joined',
+        creatorName: (room && room.creatorName) || '',
+        at: new Date().toISOString(),
+        status: 'active'
+      });
       window.location.href = '/main/call.html?call=' + encodeURIComponent(code);
     }
   });
