@@ -108,9 +108,7 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   object-fit: cover;
   background: #000;
 }
-.video-tile.local video {
-  transform: scaleX(-1);
-}
+.video-tile.local video { transform: scaleX(-1); }
 .video-tile.local {
   width: min(140px, 32vw);
   position: absolute;
@@ -164,7 +162,7 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   border: 3px solid #5b6af0;
 }
 
-/* Protection: hide raw video, show watermarked canvas */
+/* Protection canvas on video only */
 .video-tile video.protect-video-src {
   position: absolute !important;
   width: 2px !important;
@@ -395,30 +393,16 @@ html.levc-protect-blur .video-tile {
   gap: 8px;
   padding: 20px;
 }
-#levc-watermark {
-  position: fixed;
-  inset: 0;
-  z-index: 85;
-  pointer-events: none;
-  display: none;
-  flex-wrap: wrap;
-  align-content: space-around;
-  justify-content: space-around;
-  opacity: 0.08;
-  transform: rotate(-18deg) scale(1.2);
-  overflow: hidden;
+
+/* Full-page name/CODE lines REMOVED */
+#levc-watermark,
+#levc-watermark.on {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
-#levc-watermark.on { display: flex; }
-#levc-watermark.strong { opacity: 0.14 !important; }
-#levc-watermark span {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #fff;
-  padding: 28px 40px;
-  white-space: nowrap;
-  user-select: none;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
-}
+
 html.levc-ip-protect .media-stage,
 html.levc-ip-protect .video-tile {
   -webkit-user-select: none;
