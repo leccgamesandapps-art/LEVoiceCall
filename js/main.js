@@ -1,14 +1,43 @@
 /**
- * Main page logic: nav, profile, menu, permission status
+ * Main page logic: nav, profile, menu, permission status, guest name
  */
 (function () {
   if (!window.LEVCAuth || !window.LEVCAuth.requireAuth()) return;
 
-  const user = window.LEVCAuth.getUser();
-
   function $(id) { return document.getElementById(id); }
 
+  let user = window.LEVCAuth.getUser();
+
+  function showGuestNameModal() {
+    const modal = $('guest-name-modal');
+    if (!modal) {
+      window.LEVCAuth.completeGuest('');
+      user = window.LEVCAuth.getUser();
+      fillProfile();
+      return;
+    }
+    modal.classList.remove('hidden');
+    const input = $('guest-name-input');
+    const btn = $('guest-name-continue');
+    input?.focus();
+
+    function finish() {
+      const name = (input?.value || '').trim();
+      window.LEVCAuth.completeGuest(name);
+      user = window.LEVCAuth.getUser();
+      modal.classList.add('hidden');
+      fillProfile();
+    }
+
+    btn?.addEventListener('click', finish);
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') finish();
+    });
+  }
+
   function fillProfile() {
+    user = window.LEVCAuth.getUser();
+    if (!user) return;
     const avatars = document.querySelectorAll('#nav-avatar, #panel-avatar');
     avatars.forEach(img => {
       if (img) {
@@ -19,7 +48,12 @@
     const names = document.querySelectorAll('#nav-name, #panel-name');
     names.forEach(el => { if (el) el.textContent = user.name; });
   }
-  fillProfile();
+
+  if (window.LEVCAuth.needsGuestName()) {
+    showGuestNameModal();
+  } else {
+    fillProfile();
+  }
 
   const menu = $('side-menu');
   const overlay = $('menu-overlay');
@@ -54,66 +88,52 @@
     try {
       if (!navigator.permissions?.query) return 'Unavailable';
       const r = await navigator.permissions.query({ name });
-      return r.state === 'granted' ? 'Granted' : r.state === 'denied' ? 'Denied' : 'Prompt';
+      const map = { granted: 'Allowed', denied: 'Denied', prompt: 'Prompt' };
+      return map[r.state] || r.state;
     } catch {
       return 'Unavailable';
     }
   }
 
   async function updatePermStatus() {
-    const mic = await queryPerm('microphone');
-    const cam = await queryPerm('camera');
-    let notif = 'Unavailable';
-    if ('Notification' in window) {
-      notif = Notification.permission === 'granted' ? 'Granted' :
-              Notification.permission === 'denied' ? 'Denied' : 'Prompt';
+    if ($('perm-mic')) $('perm-mic').textContent = await queryPerm('microphone');
+    if ($('perm-cam')) $('perm-cam').textContent = await queryPerm('camera');
+    if ($('perm-notif')) {
+      if (!('Notification' in window)) $('perm-notif').textContent = 'Unavailable';
+      else {
+        const s = Notification.permission;
+        $('perm-notif').textContent = s === 'granted' ? 'Allowed' : s === 'denied' ? 'Denied' : 'Prompt';
+      }
     }
-    if ($('perm-mic')) $('perm-mic').textContent = mic;
-    if ($('perm-cam')) $('perm-cam').textContent = cam;
-    if ($('perm-notif')) $('perm-notif').textContent = notif;
   }
 
   $('test-mic')?.addEventListener('click', async () => {
     try {
       const s = await navigator.mediaDevices.getUserMedia({ audio: true });
       s.getTracks().forEach(t => t.stop());
-      toast('Microphone works');
+      alert('Microphone works.');
       updatePermStatus();
     } catch (e) {
-      toast('Microphone: ' + (e.name || e.message), true);
+      alert('Microphone: ' + (e.message || e.name));
     }
   });
-
   $('test-cam')?.addEventListener('click', async () => {
     try {
       const s = await navigator.mediaDevices.getUserMedia({ video: true });
       s.getTracks().forEach(t => t.stop());
-      toast('Camera works');
+      alert('Camera works.');
       updatePermStatus();
     } catch (e) {
-      toast('Camera: ' + (e.name || e.message), true);
+      alert('Camera: ' + (e.message || e.name));
     }
   });
-
   $('enable-notif')?.addEventListener('click', async () => {
     if (!('Notification' in window)) {
-      toast('Notifications not supported', true);
+      alert('Notifications not supported.');
       return;
     }
     const p = await Notification.requestPermission();
-    toast(p === 'granted' ? 'Notifications enabled' : 'Notifications not granted');
+    alert('Notifications: ' + p);
     updatePermStatus();
   });
-
-  function toast(msg, isError) {
-    const t = $('toast');
-    if (!t) return;
-    t.textContent = msg;
-    t.classList.remove('hidden', 'error');
-    if (isError) t.classList.add('error');
-    clearTimeout(t._tid);
-    t._tid = setTimeout(() => t.classList.add('hidden'), 3200);
-  }
-
-  window.LEVCMain = { toast, updatePermStatus };
 })();
