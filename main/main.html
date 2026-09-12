@@ -38,7 +38,6 @@
       <img id="panel-avatar" class="avatar-lg" src="" alt="" />
       <h3 id="panel-name">—</h3>
       <p id="panel-status" class="status-pill">Authenticated</p>
-      
       <div class="permissions-section">
         <h4>Website Permissions</h4>
         <div class="perm-row"><span>Microphone</span><span id="perm-mic">—</span></div>
@@ -50,7 +49,6 @@
           <button id="enable-notif" class="btn btn-sm">Enable Notifications</button>
         </div>
       </div>
-
       <button id="panel-logout" class="btn btn-danger btn-block">Logout</button>
       <button id="close-profile" class="btn btn-ghost btn-block">Close</button>
     </div>
@@ -61,7 +59,6 @@
       <h1>Start a Call</h1>
       <p>Create an independent room or join one with a code.</p>
     </section>
-
     <div class="home-actions">
       <button id="btn-create" class="action-card create">
         <div class="action-icon">＋</div>
@@ -80,18 +77,15 @@
     <div class="modal-backdrop" data-close="create"></div>
     <div class="modal-card">
       <h2 id="create-title">Create a Call</h2>
-      
       <fieldset class="field">
         <legend>Call Type</legend>
         <label class="radio-label"><input type="radio" name="callType" value="voice" checked /> Voice Call</label>
         <label class="radio-label"><input type="radio" name="callType" value="video" /> Video Call</label>
       </fieldset>
-
       <div class="field">
         <label for="call-name">Call Name <span class="optional">(Optional)</span></label>
         <input id="call-name" type="text" maxlength="60" placeholder="Leave empty for auto name" />
       </div>
-
       <div class="field privacy-fields">
         <div class="toggle-row">
           <span>Screenshot Protection</span>
@@ -102,7 +96,6 @@
           <button type="button" id="tog-sr" class="toggle" data-on="false" aria-pressed="false">OFF</button>
         </div>
       </div>
-
       <div class="modal-actions">
         <button id="create-cancel" class="btn btn-ghost">Cancel</button>
         <button id="create-submit" class="btn btn-primary">Create</button>
@@ -135,6 +128,23 @@
       <div class="modal-actions">
         <button id="perm-deny" class="btn btn-ghost">Not Now</button>
         <button id="perm-allow" class="btn btn-primary">Allow</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="guest-name-modal" class="modal hidden" role="dialog" aria-labelledby="guest-name-title">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <h2 id="guest-name-title">Guest Name</h2>
+      <p style="color:#a0a8c0;font-size:0.95rem;margin-bottom:12px;">
+        Enter a display name, or leave empty for a random name like <strong>guest#1234567890</strong>.
+      </p>
+      <div class="field">
+        <label for="guest-name-input">Your name</label>
+        <input id="guest-name-input" type="text" maxlength="40" placeholder="Optional — leave empty for random" autocomplete="nickname" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="guest-name-continue" class="btn btn-primary">Continue</button>
       </div>
     </div>
   </div>
