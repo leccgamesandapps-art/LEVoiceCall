@@ -1,56 +1,57 @@
 /**
- * Main page logic: nav, profile, menu, permission status, guest name
+ * LEVoiceCall main shell — menu, profile, guest name, permissions
  */
 (function () {
-  if (!window.LEVCAuth || !window.LEVCAuth.requireAuth()) return;
+  if (!window.LEVCAuth) return;
 
-  function $(id) { return document.getElementById(id); }
-
+  const $ = (id) => document.getElementById(id);
   let user = window.LEVCAuth.getUser();
 
   function showGuestNameModal() {
     const modal = $('guest-name-modal');
-    if (!modal) {
-      window.LEVCAuth.completeGuest('');
-      user = window.LEVCAuth.getUser();
-      fillProfile();
-      return;
-    }
+    if (!modal) return;
     modal.classList.remove('hidden');
-    const input = $('guest-name-input');
-    const btn = $('guest-name-continue');
-    input?.focus();
-
-    function finish() {
-      const name = (input?.value || '').trim();
+    $('guest-name-continue')?.addEventListener('click', () => {
+      const name = ($('guest-name-input')?.value || '').trim();
       window.LEVCAuth.completeGuest(name);
       user = window.LEVCAuth.getUser();
       modal.classList.add('hidden');
       fillProfile();
-    }
-
-    btn?.addEventListener('click', finish);
-    input?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') finish();
-    });
+    }, { once: true });
   }
 
   function fillProfile() {
     user = window.LEVCAuth.getUser();
     if (!user) return;
     const avatars = document.querySelectorAll('#nav-avatar, #panel-avatar');
-    avatars.forEach(img => {
+    avatars.forEach((img) => {
       if (img) {
-        img.src = user.profilePicture || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name) + '&background=5b6af0&color=fff');
+        img.src =
+          user.profilePicture ||
+          'https://ui-avatars.com/api/?name=' +
+            encodeURIComponent(user.name) +
+            '&background=5b6af0&color=fff';
         img.alt = user.name;
       }
     });
     const names = document.querySelectorAll('#nav-name, #panel-name');
-    names.forEach(el => { if (el) el.textContent = user.name; });
+    names.forEach((el) => {
+      if (el) el.textContent = user.name;
+    });
+    const statusEl = document.getElementById('panel-status');
+    if (statusEl) {
+      if (user.authType === 'leid' || user.leid)
+        statusEl.textContent = 'LEID · ' + (user.leid || user.name);
+      else if (user.isGuest || user.authType === 'guest') statusEl.textContent = 'Guest';
+      else statusEl.textContent = 'Facebook';
+    }
   }
 
   if (window.LEVCAuth.needsGuestName()) {
     showGuestNameModal();
+  } else if (!window.LEVCAuth.isAuthenticated()) {
+    window.location.replace('/index.html');
+    return;
   } else {
     fillProfile();
   }
@@ -84,34 +85,36 @@
   });
   $('close-profile')?.addEventListener('click', () => panel?.classList.add('hidden'));
 
-  async function queryPerm(name) {
-    try {
-      if (!navigator.permissions?.query) return 'Unavailable';
-      const r = await navigator.permissions.query({ name });
-      const map = { granted: 'Allowed', denied: 'Denied', prompt: 'Prompt' };
-      return map[r.state] || r.state;
-    } catch {
-      return 'Unavailable';
-    }
-  }
-
   async function updatePermStatus() {
-    if ($('perm-mic')) $('perm-mic').textContent = await queryPerm('microphone');
-    if ($('perm-cam')) $('perm-cam').textContent = await queryPerm('camera');
-    if ($('perm-notif')) {
-      if (!('Notification' in window)) $('perm-notif').textContent = 'Unavailable';
-      else {
-        const s = Notification.permission;
-        $('perm-notif').textContent = s === 'granted' ? 'Allowed' : s === 'denied' ? 'Denied' : 'Prompt';
+    const set = (id, text) => {
+      const el = $(id);
+      if (el) el.textContent = text;
+    };
+    try {
+      if (navigator.permissions) {
+        const mic = await navigator.permissions.query({ name: 'microphone' });
+        set('perm-mic', mic.state);
+        try {
+          const cam = await navigator.permissions.query({ name: 'camera' });
+          set('perm-cam', cam.state);
+        } catch (e) {
+          set('perm-cam', '—');
+        }
+        try {
+          const n = await navigator.permissions.query({ name: 'notifications' });
+          set('perm-notif', n.state);
+        } catch (e) {
+          set('perm-notif', Notification?.permission || '—');
+        }
       }
-    }
+    } catch (e) {}
   }
 
   $('test-mic')?.addEventListener('click', async () => {
     try {
       const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-      s.getTracks().forEach(t => t.stop());
-      alert('Microphone works.');
+      s.getTracks().forEach((t) => t.stop());
+      alert('Microphone OK');
       updatePermStatus();
     } catch (e) {
       alert('Microphone: ' + (e.message || e.name));
@@ -120,20 +123,20 @@
   $('test-cam')?.addEventListener('click', async () => {
     try {
       const s = await navigator.mediaDevices.getUserMedia({ video: true });
-      s.getTracks().forEach(t => t.stop());
-      alert('Camera works.');
+      s.getTracks().forEach((t) => t.stop());
+      alert('Camera OK');
       updatePermStatus();
     } catch (e) {
       alert('Camera: ' + (e.message || e.name));
     }
   });
   $('enable-notif')?.addEventListener('click', async () => {
-    if (!('Notification' in window)) {
-      alert('Notifications not supported.');
-      return;
+    try {
+      const p = await Notification.requestPermission();
+      alert('Notifications: ' + p);
+      updatePermStatus();
+    } catch (e) {
+      alert('Notifications not available');
     }
-    const p = await Notification.requestPermission();
-    alert('Notifications: ' + p);
-    updatePermStatus();
   });
 })();

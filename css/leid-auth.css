@@ -1,0 +1,36 @@
+.btn-leid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 201, 167, 0.45);
+  background: linear-gradient(135deg, rgba(0, 201, 167, 0.15), rgba(91, 106, 240, 0.12));
+  color: #e8faf6;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.btn-leid:hover {
+  border-color: #00c9a7;
+  background: rgba(0, 201, 167, 0.22);
+}
+.leid-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #00c9a7;
+  color: #0a0c12;
+}
+.auth-leid-hint {
+  margin: 10px 0 0;
+  font-size: 0.78rem;
+  color: #6b7394;
+  text-align: center;
+  line-height: 1.4;
+}
+.auth-leid-hint a { color: #00c9a7; }
