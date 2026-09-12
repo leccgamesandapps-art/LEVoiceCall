@@ -25,7 +25,7 @@
         </svg>
       </div>
       <h1 class="logo-title">LEVoiceCall</h1>
-      <p class="logo-tagline">Independent voice &amp; video rooms. One code. One call.</p>
+      <p class="logo-tagline">Independent voice & video rooms. One code. One call.</p>
     </div>
 
     <div class="auth-card">
@@ -55,10 +55,10 @@
       </button>
       <p class="auth-leid-hint">
         From <a href="https://officialleweb.vercel.app" target="_blank" rel="noopener">OfficialLEWeb</a>
-        — use your LEID account across LE sites.
+        — real shared LEID (same Facebook App as OfficialLEWeb).
       </p>
 
-      <p class="auth-note">Facebook: public profile. Guest: display name next. LEID: OfficialLEWeb account.</p>
+      <p class="auth-note">Facebook & LEID use Meta App LEID ACCOUNT. Guest: display name next.</p>
 
       <div id="auth-loading" class="auth-loading hidden">
         <div class="loading-spinner"></div>
@@ -79,9 +79,9 @@
 
   <div id="fb-root"></div>
   <script>
+    window.LEVC_FB_APP_ID = '2338993963576572';
     window.fbAsyncInit = function () {
-      const FB_APP_ID = window.LEVC_FB_APP_ID || localStorage.getItem('levc_fb_app_id') || '1065855442874700';
-      FB.init({ appId: FB_APP_ID || '0', cookie: true, xfbml: false, version: 'v21.0' });
+      FB.init({ appId: '2338993963576572', cookie: true, xfbml: false, version: 'v21.0' });
       FB.AppEvents.logPageView();
       if (window.LEVCAuth) window.LEVCAuth.onFBReady();
     };
