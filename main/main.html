@@ -56,14 +56,14 @@
 
   <main class="home-main">
     <section class="home-hero">
-      <h1>Start a Call</h1>
-      <p>Create an independent room or join one with a code.</p>
+      <h1>Private Calls</h1>
+      <p>One-tap rooms. Audio + video. Toggle camera anytime — just like Messenger.</p>
     </section>
     <div class="home-actions">
       <button id="btn-create" class="action-card create">
         <div class="action-icon">＋</div>
         <div class="action-label">Create</div>
-        <div class="action-desc">New voice or video room</div>
+        <div class="action-desc">New private room</div>
       </button>
       <button id="btn-join" class="action-card join">
         <div class="action-icon">⇢</div>
@@ -71,17 +71,14 @@
         <div class="action-desc">Enter a join code</div>
       </button>
     </div>
+    <p class="home-privacy-note">Rooms are isolated. Screenshot &amp; recording protection available.</p>
   </main>
 
   <div id="create-modal" class="modal hidden" role="dialog" aria-labelledby="create-title">
     <div class="modal-backdrop" data-close="create"></div>
     <div class="modal-card">
       <h2 id="create-title">Create a Call</h2>
-      <fieldset class="field">
-        <legend>Call Type</legend>
-        <label class="radio-label"><input type="radio" name="callType" value="voice" checked /> Voice Call</label>
-        <label class="radio-label"><input type="radio" name="callType" value="video" /> Video Call</label>
-      </fieldset>
+      <p class="modal-sub">Unified audio + video room. You can turn the camera on or off anytime during the call.</p>
       <div class="field">
         <label for="call-name">Call Name <span class="optional">(Optional)</span></label>
         <input id="call-name" type="text" maxlength="60" placeholder="Leave empty for auto name" />
@@ -89,16 +86,17 @@
       <div class="field privacy-fields">
         <div class="toggle-row">
           <span>Screenshot Protection</span>
-          <button type="button" id="tog-ss" class="toggle" data-on="false" aria-pressed="false">OFF</button>
+          <button type="button" id="tog-ss" class="toggle on" data-on="true" aria-pressed="true">ON</button>
         </div>
         <div class="toggle-row">
           <span>Screen Recording Protection</span>
-          <button type="button" id="tog-sr" class="toggle" data-on="false" aria-pressed="false">OFF</button>
+          <button type="button" id="tog-sr" class="toggle on" data-on="true" aria-pressed="true">ON</button>
         </div>
+        <p class="privacy-hint">Recommended for private conversations.</p>
       </div>
       <div class="modal-actions">
         <button id="create-cancel" class="btn btn-ghost">Cancel</button>
-        <button id="create-submit" class="btn btn-primary">Create</button>
+        <button id="create-submit" class="btn btn-primary">Create Call</button>
       </div>
       <div id="create-error" class="form-error hidden"></div>
     </div>

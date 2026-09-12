@@ -1,5 +1,6 @@
 /**
- * System A — Create Call
+ * System A — Create Call (Unified Messenger-style)
+ * No voice/video split — every room supports both. Camera is optional during the call.
  */
 (function () {
   if (!window.LEVCAuth?.isAuthenticated()) return;
@@ -10,11 +11,11 @@
 
   function open() {
     modal?.classList.remove('hidden');
-    $('call-name').value = '';
+    if ($('call-name')) $('call-name').value = '';
     $('create-error')?.classList.add('hidden');
-    document.querySelector('input[name="callType"][value="voice"]').checked = true;
-    setToggle($('tog-ss'), false);
-    setToggle($('tog-sr'), false);
+    // Default privacy ON for stronger security feel
+    setToggle($('tog-ss'), true);
+    setToggle($('tog-sr'), true);
   }
   function close() {
     modal?.classList.add('hidden');
@@ -51,25 +52,31 @@
   }
 
   $('create-submit')?.addEventListener('click', async () => {
-    const type = document.querySelector('input[name="callType"]:checked')?.value || 'voice';
     let name = ($('call-name')?.value || '').trim();
-    if (!name) name = user.name.split(' ')[0] + "'s Call";
+    if (!name) name = (user.name || 'User').split(' ')[0] + "'s Call";
     const ss = $('tog-ss')?.dataset.on === 'true';
     const sr = $('tog-sr')?.dataset.on === 'true';
 
     const err = $('create-error');
     err?.classList.add('hidden');
 
+    // Unified: always request mic + camera capability (user can turn camera off later)
     try {
-      const constraints = type === 'video' ? { audio: true, video: true } : { audio: true };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 360 } }
+      });
       stream.getTracks().forEach(t => t.stop());
     } catch (e) {
-      err.textContent = type === 'video'
-        ? 'Camera and/or microphone permission is required for video calls. Allow access and try again.'
-        : 'Microphone permission is required for voice calls. Allow access and try again.';
-      err?.classList.remove('hidden');
-      return;
+      // Fallback: at least require mic
+      try {
+        const audioOnly = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioOnly.getTracks().forEach(t => t.stop());
+      } catch (e2) {
+        err.textContent = 'Microphone permission is required. Allow access and try again.';
+        err?.classList.remove('hidden');
+        return;
+      }
     }
 
     const room = {
@@ -79,7 +86,7 @@
       creatorId: user.facebookId,
       creatorName: user.name,
       creatorProfile: user.profilePicture,
-      callType: type,
+      callType: 'call', // unified — supports both audio + video
       screenshotProtection: ss,
       screenRecordingProtection: sr,
       participants: [{
