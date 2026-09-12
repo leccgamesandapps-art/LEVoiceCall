@@ -120,6 +120,8 @@
               video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24 } } }
           : { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false };
       localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      // Ensure tracks are enabled
+      localStream.getTracks().forEach((t) => { t.enabled = true; });
       startLocalPreview();
       updateQualityBadge();
       setConnStatus(room.participants.length <= 1 ? 'Waiting for others…' : 'Connecting peers…', 'wait');
@@ -205,18 +207,51 @@
     av.classList.add('show');
   }
 
+  function hideAvatarOn(wrap) {
+    const av = wrap?.querySelector('.tile-avatar');
+    if (av) av.classList.remove('show');
+  }
+
   function startLocalPreview() {
     const v = $('local-video');
-    if (v && localStream) {
+    const wrap = $('local-wrap');
+    if (!v || !localStream) return;
+
+    // Always mirror local self-view
+    v.classList.add('mirrored');
+
+    const hasLiveVideo = localStream.getVideoTracks().some(
+      (t) => t.enabled && t.readyState === 'live'
+    );
+
+    if (room.callType !== 'video' || !hasLiveVideo) {
+      v.style.display = 'none';
+      wrap?.classList.add('audio-only');
+      showAvatarOn(wrap, user);
+    } else {
+      v.style.display = '';
+      wrap?.classList.remove('audio-only');
+      hideAvatarOn(wrap);
       v.srcObject = localStream;
-      v.play?.().catch(() => {});
-      if (room.callType !== 'video') {
-        v.style.display = 'none';
-        $('local-wrap')?.classList.add('audio-only');
-        showAvatarOn($('local-wrap'), user);
+
+      const tryPlay = () => {
+        v.play().catch(() => {});
+      };
+
+      if (v.readyState >= 2) {
+        tryPlay();
+      } else {
+        v.addEventListener('loadedmetadata', tryPlay, { once: true });
+        v.addEventListener('loadeddata', tryPlay, { once: true });
+        // Fallback retry
+        setTimeout(tryPlay, 400);
+        setTimeout(tryPlay, 1200);
       }
     }
-    if ($('local-label')) $('local-label').textContent = (user.name || 'You') + ' (you)';
+
+    if ($('local-label')) {
+      $('local-label').textContent = (user.name || 'You') + ' (you)';
+    }
   }
 
   async function saveRoom() {
@@ -379,20 +414,37 @@
     $('btn-mic').classList.toggle('muted', !micEnabled);
     $('btn-mic').classList.toggle('off', !micEnabled);
   });
+
   $('btn-cam')?.addEventListener('click', () => {
     camEnabled = !camEnabled;
     localStream?.getVideoTracks().forEach((t) => { t.enabled = camEnabled; });
     $('btn-cam').classList.toggle('muted', !camEnabled);
     $('btn-cam').classList.toggle('off', !camEnabled);
-    if (!camEnabled) showAvatarOn($('local-wrap'), user);
-    else $('local-wrap')?.querySelector('.tile-avatar')?.classList.remove('show');
+
+    const wrap = $('local-wrap');
+    const v = $('local-video');
+    if (!camEnabled) {
+      if (v) v.style.display = 'none';
+      wrap?.classList.add('audio-only');
+      showAvatarOn(wrap, user);
+    } else {
+      if (v) {
+        v.style.display = '';
+        v.srcObject = localStream;
+        v.play?.().catch(() => {});
+      }
+      wrap?.classList.remove('audio-only');
+      hideAvatarOn(wrap);
+    }
   });
+
   $('btn-audio')?.addEventListener('click', () => {
     audioOutEnabled = !audioOutEnabled;
     document.querySelectorAll('.video-tile.remote video').forEach((v) => { v.muted = !audioOutEnabled; });
     $('btn-audio').classList.toggle('muted', !audioOutEnabled);
     $('btn-audio').classList.toggle('off', !audioOutEnabled);
   });
+
   $('copy-code')?.addEventListener('click', () => {
     const code = room?.joinCode || joinCode;
     navigator.clipboard?.writeText(code).then(() => {

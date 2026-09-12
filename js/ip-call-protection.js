@@ -1,6 +1,7 @@
 /**
  * LEVoiceCall — IPCallProtection
  * Best-effort screenshot / screen-recording protection within browser limits.
+ * Watermarks made much softer so they don’t dominate the UI.
  */
 (function (global) {
   const STATE = {
@@ -47,8 +48,9 @@
       wm.setAttribute('aria-hidden', 'true');
       document.body.appendChild(wm);
     }
+    // Fewer tiles = less aggressive
     const tiles = [];
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < 10; i++) {
       const d = document.createElement('div');
       d.textContent = text;
       tiles.push('<span>' + d.innerHTML + '</span>');

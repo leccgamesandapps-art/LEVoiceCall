@@ -108,6 +108,11 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   object-fit: cover;
   background: #000;
 }
+/* Mirror local self-view so it feels natural */
+.video-tile.local video.mirrored,
+.video-tile.local video {
+  transform: scaleX(-1);
+}
 .video-tile.local {
   width: min(140px, 32vw);
   position: absolute;
@@ -371,6 +376,7 @@ html.levc-protect-blur .video-tile {
   gap: 8px;
   padding: 20px;
 }
+/* Softened watermark – less dense + lower opacity */
 #levc-watermark {
   position: fixed;
   inset: 0;
@@ -380,16 +386,16 @@ html.levc-protect-blur .video-tile {
   flex-wrap: wrap;
   align-content: space-around;
   justify-content: space-around;
-  opacity: 0.06;
-  transform: rotate(-18deg) scale(1.2);
+  opacity: 0.028;
+  transform: rotate(-18deg) scale(1.15);
   overflow: hidden;
 }
 #levc-watermark.on { display: flex; }
 #levc-watermark span {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 600;
   color: #fff;
-  padding: 24px 40px;
+  padding: 36px 48px;
   white-space: nowrap;
   user-select: none;
 }
