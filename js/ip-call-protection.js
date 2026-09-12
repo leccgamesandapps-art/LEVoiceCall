@@ -1,7 +1,6 @@
 /**
- * LEVoiceCall — IPCallProtection (max browser effort)
- * Burns name+code into every video frame so screenshots include watermark.
- * Hides raw <video>; shows marked canvas. Blackout when tab hidden.
+ * LEVoiceCall — IPCallProtection
+ * No full-page watermark. Burns mark into video frames only + blackout when tab hidden.
  */
 (function (global) {
   const STATE = {
@@ -42,28 +41,13 @@
     }
   }
 
-  function escapeHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-  }
-
   function ensureWatermark(text) {
-    let wm = document.getElementById('levc-watermark');
-    if (!wm) {
-      wm = document.createElement('div');
-      wm.id = 'levc-watermark';
-      wm.setAttribute('aria-hidden', 'true');
-      document.body.appendChild(wm);
-    }
-    const tiles = [];
-    for (let i = 0; i < 48; i++) tiles.push('<span>' + escapeHtml(text) + '</span>');
-    wm.innerHTML = tiles.join('');
-    wm.classList.add('on', 'strong');
+    // No full-page overlay — only canvas watermark on video frames
+    document.getElementById('levc-watermark')?.remove();
   }
 
   function clearWatermark() {
-    document.getElementById('levc-watermark')?.classList.remove('on', 'strong');
+    document.getElementById('levc-watermark')?.remove();
   }
 
   function bindProtectedVideos(label) {
@@ -87,7 +71,7 @@
     const text = label || STATE.label || 'LEVoiceCall';
     const size = Math.max(16, Math.floor(Math.min(w, h) / 18));
     ctx.save();
-    ctx.globalAlpha = STATE.screenshot ? 0.38 : 0.28;
+    ctx.globalAlpha = STATE.screenshot ? 0.42 : 0.32;
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = 'rgba(0,0,0,0.55)';
     ctx.lineWidth = 2;
@@ -106,8 +90,8 @@
     }
     ctx.restore();
     ctx.save();
-    ctx.globalAlpha = 0.85;
-    ctx.fillStyle = 'rgba(91,106,240,0.85)';
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = 'rgba(91,106,240,0.9)';
     const badge = 'PROTECTED · ' + (text.split(' · ')[1] || text).slice(0, 12);
     ctx.font = 'bold ' + Math.max(11, Math.floor(size * 0.55)) + 'px sans-serif';
     const pad = 8;
@@ -197,6 +181,7 @@
     if (STATE.screenRecord) document.documentElement.classList.add('levc-sr-protect');
 
     ensureWatermark(STATE.label);
+    document.getElementById('levc-watermark')?.remove();
 
     setTimeout(() => {
       bindProtectedVideos(STATE.label);
