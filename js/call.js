@@ -1,5 +1,5 @@
 /**
- * LEVoiceCall — Call room (WebRTC + adaptive quality + protection)
+ * LEVoiceCall — Call room (WebRTC upgraded)
  */
 (function () {
   if (!window.LEVCAuth?.requireAuth()) return;
@@ -14,24 +14,24 @@
   let peers = {};
   let isLeaving = false;
   let pollTimer = null;
+  let signalTimer = null;
   let micEnabled = true;
   let camEnabled = true;
   let audioOutEnabled = true;
   let qualityLevel = window.LEVCNetworkQuality?.initFromNetwork?.() || 'medium';
+  let handledSignalIds = new Set();
 
   const iceServers = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' }
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' }
   ];
 
   function paintCode(code) {
     const c = (code || '—').toUpperCase();
-    if ($('display-code')) $('display-code').textContent = c;
-    if ($('hint-code')) $('hint-code').textContent = c;
-    if ($('loading-code-hint')) {
-      $('loading-code-hint').textContent = c !== '—' ? ('Code: ' + c) : '';
-    }
+    ['display-code', 'hint-code'].forEach((id) => { if ($(id)) $(id).textContent = c; });
+    if ($('loading-code-hint')) $('loading-code-hint').textContent = c !== '—' ? 'Code: ' + c : '';
   }
   paintCode(joinCode || '—');
 
@@ -62,6 +62,18 @@
     cleanupMedia();
   }
 
+  function setConnStatus(text, state) {
+    let el = $('conn-status');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'conn-status';
+      el.className = 'conn-status';
+      document.querySelector('.call-top')?.appendChild(el);
+    }
+    el.textContent = text;
+    el.dataset.state = state || 'info';
+  }
+
   async function loadRoom() {
     try {
       const res = await fetch('/api/rooms?code=' + encodeURIComponent(joinCode));
@@ -69,6 +81,10 @@
     } catch (e) {}
     const local = JSON.parse(localStorage.getItem('levc_rooms') || '{}');
     return local[joinCode] || null;
+  }
+
+  function shouldInitiate(peerId) {
+    return String(user.facebookId) < String(peerId);
   }
 
   async function init() {
@@ -81,10 +97,8 @@
       showShutdown();
       return;
     }
-
     paintCode(room.joinCode || joinCode);
-
-    if (!room.participants.find(p => p.id === user.facebookId)) {
+    if (!room.participants.find((p) => p.id === user.facebookId)) {
       room.participants.push({
         id: user.facebookId,
         name: user.name,
@@ -94,46 +108,34 @@
       });
       await saveRoom();
     }
-
     setupUI();
     showShell();
-
+    setConnStatus('Connecting media…', 'wait');
     try {
       qualityLevel = window.LEVCNetworkQuality?.initFromNetwork?.() || qualityLevel || 'medium';
       const constraints = window.LEVCNetworkQuality
         ? window.LEVCNetworkQuality.getConstraints(room.callType, qualityLevel)
-        : (room.callType === 'video'
+        : room.callType === 'video'
           ? { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
               video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24 } } }
-          : { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
+          : { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false };
       localStream = await navigator.mediaDevices.getUserMedia(constraints);
       startLocalPreview();
       updateQualityBadge();
+      setConnStatus(room.participants.length <= 1 ? 'Waiting for others…' : 'Connecting peers…', 'wait');
     } catch (e) {
       $('perm-modal')?.classList.remove('hidden');
-      if ($('perm-title')) {
-        $('perm-title').textContent = e.name === 'NotAllowedError' ? 'Permission Denied' : 'Unable to access device';
-      }
+      if ($('perm-title')) $('perm-title').textContent = e.name === 'NotAllowedError' ? 'Permission Denied' : 'Unable to access device';
       if ($('perm-msg')) $('perm-msg').textContent = humanMediaError(e);
       $('perm-retry')?.addEventListener('click', () => location.reload());
     }
-
     const protectOpts = {
       userLabel: (user.name || 'Guest') + ' · ' + (room.joinCode || joinCode),
       selectors: ['.media-stage', '.call-shell', '.video-tile', '#remote-container', '#local-wrap']
     };
-    if (window.IPCallProtection) {
-      window.IPCallProtection.start({
-        screenshotProtection: room.screenshotProtection,
-        screenRecordingProtection: room.screenRecordingProtection
-      }, protectOpts);
-    } else {
-      window.LEVCProtection?.start({
-        screenshotProtection: room.screenshotProtection,
-        screenRecordingProtection: room.screenRecordingProtection
-      }, protectOpts);
-    }
-
+    const prot = { screenshotProtection: room.screenshotProtection, screenRecordingProtection: room.screenRecordingProtection };
+    if (window.IPCallProtection) window.IPCallProtection.start(prot, protectOpts);
+    else window.LEVCProtection?.start(prot, protectOpts);
     if (window.LEVCNetworkQuality) {
       window.LEVCNetworkQuality.startMonitor(peers, (level, info) => {
         qualityLevel = level;
@@ -141,12 +143,11 @@
         window.LEVCNetworkQuality.applyToAllPeers(peers, level);
       });
     }
-
-    pollTimer = setInterval(syncRoom, 2500);
-    room.participants.forEach(p => {
-      if (p.id !== user.facebookId) ensurePeer(p.id, true);
+    pollTimer = setInterval(syncRoom, 2000);
+    signalTimer = setInterval(pollSignals, 800);
+    room.participants.forEach((p) => {
+      if (p.id !== user.facebookId) ensurePeer(p.id, shouldInitiate(p.id));
     });
-    setInterval(pollSignals, 1500);
   }
 
   function humanMediaError(e) {
@@ -161,9 +162,7 @@
   function setupUI() {
     paintCode(room.joinCode || joinCode);
     if ($('call-name')) $('call-name').textContent = room.callName || 'Call';
-    if ($('call-type-badge')) {
-      $('call-type-badge').textContent = room.callType === 'video' ? 'Video' : 'Voice';
-    }
+    if ($('call-type-badge')) $('call-type-badge').textContent = room.callType === 'video' ? 'Video' : 'Voice';
     if ($('call-creator')) $('call-creator').textContent = 'Creator: ' + (room.creatorName || '—');
     if (room.callType === 'video') $('btn-cam')?.classList.remove('hidden');
     else $('btn-cam')?.classList.add('hidden');
@@ -174,13 +173,11 @@
     const list = $('participants-list');
     if (!list || !room) return;
     list.innerHTML = '';
-    (room.participants || []).forEach(p => {
+    (room.participants || []).forEach((p) => {
       const li = document.createElement('li');
       const you = p.id === user.facebookId ? ' (you)' : '';
       const cr = p.isCreator ? ' · creator' : '';
-      li.innerHTML =
-        '<img src="' + (p.profilePicture || '') + '" alt="" class="avatar-xs" onerror="this.style.display=\'none\'"/>' +
-        '<span>' + escapeHtml(p.name || 'User') + you + cr + '</span>';
+      li.innerHTML = '<img src="' + (p.profilePicture || '') + '" alt="" class="avatar-xs" onerror="this.style.display=\'none\'"/><span>' + escapeHtml(p.name || 'User') + you + cr + '</span>';
       list.appendChild(li);
     });
     if ($('part-count')) $('part-count').textContent = '(' + (room.participants || []).length + ')';
@@ -193,13 +190,30 @@
     return d.innerHTML;
   }
 
+  function showAvatarOn(wrap, person) {
+    if (!wrap) return;
+    let av = wrap.querySelector('.tile-avatar');
+    if (!av) {
+      av = document.createElement('div');
+      av.className = 'tile-avatar';
+      wrap.appendChild(av);
+    }
+    const name = person?.name || '?';
+    const initials = name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+    if (person?.profilePicture) av.innerHTML = '<img src="' + person.profilePicture + '" alt=""/>';
+    else av.textContent = initials || '•';
+    av.classList.add('show');
+  }
+
   function startLocalPreview() {
     const v = $('local-video');
     if (v && localStream) {
       v.srcObject = localStream;
+      v.play?.().catch(() => {});
       if (room.callType !== 'video') {
         v.style.display = 'none';
         $('local-wrap')?.classList.add('audio-only');
+        showAvatarOn($('local-wrap'), user);
       }
     }
     if ($('local-label')) $('local-label').textContent = (user.name || 'You') + ' (you)';
@@ -210,11 +224,7 @@
     local[joinCode] = room;
     localStorage.setItem('levc_rooms', JSON.stringify(local));
     try {
-      await fetch('/api/rooms', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(room)
-      });
+      await fetch('/api/rooms', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(room) });
     } catch (e) {}
   }
 
@@ -229,84 +239,105 @@
     }
     paintCode(room.joinCode || joinCode);
     renderParticipants();
-    room.participants.forEach(p => {
-      if (p.id !== user.facebookId && !peers[p.id]) ensurePeer(p.id, true);
+    room.participants.forEach((p) => {
+      if (p.id !== user.facebookId && !peers[p.id]) ensurePeer(p.id, shouldInitiate(p.id));
     });
-    Object.keys(peers).forEach(pid => {
-      if (!room.participants.find(p => p.id === pid)) {
+    Object.keys(peers).forEach((pid) => {
+      if (!room.participants.find((p) => p.id === pid)) {
         peers[pid]?.close();
         delete peers[pid];
         document.getElementById('remote-' + pid)?.remove();
       }
     });
+    if (Object.keys(peers).length === 0 && room.participants.length <= 1) setConnStatus('Waiting for others…', 'wait');
   }
 
   function ensurePeer(peerId, initiator) {
     if (peers[peerId]) return peers[peerId];
-    const pc = new RTCPeerConnection({ iceServers });
+    const pc = new RTCPeerConnection({ iceServers, iceCandidatePoolSize: 4 });
     peers[peerId] = pc;
-    if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-
+    if (localStream) localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
     pc.ontrack = (ev) => {
-      let el = document.getElementById('remote-' + peerId);
-      if (!el) {
-        el = document.createElement('div');
-        el.id = 'remote-' + peerId;
-        el.className = 'video-tile remote';
-        const video = document.createElement('video');
-        video.autoplay = true;
-        video.playsInline = true;
-        el.appendChild(video);
-        const label = document.createElement('div');
-        label.className = 'tile-label';
-        const p = room.participants.find(x => x.id === peerId);
-        label.textContent = p?.name || 'Participant';
-        el.appendChild(label);
-        $('remote-container')?.appendChild(el);
-        $('no-participants')?.classList.add('hidden');
-      }
-      const video = el.querySelector('video');
-      if (video && ev.streams[0]) video.srcObject = ev.streams[0];
+      attachRemote(peerId, ev.streams[0] || new MediaStream([ev.track]));
+      setConnStatus('Connected', 'ok');
     };
-
     pc.onicecandidate = async (ev) => {
       if (ev.candidate) {
-        await postSignal({ type: 'ice', from: user.facebookId, to: peerId, candidate: ev.candidate });
+        await postSignal({ type: 'ice', from: user.facebookId, to: peerId, candidate: ev.candidate, id: 'ice_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) });
       }
     };
-
+    pc.onconnectionstatechange = () => {
+      const st = pc.connectionState;
+      if (st === 'connected') setConnStatus('Connected', 'ok');
+      else if (st === 'connecting') setConnStatus('Connecting peers…', 'wait');
+      else if (st === 'failed') { setConnStatus('Reconnecting…', 'warn'); try { pc.restartIce(); } catch (e) {} }
+      else if (st === 'disconnected') setConnStatus('Unstable…', 'warn');
+    };
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'failed') { try { pc.restartIce(); } catch (e) {} }
+    };
     window.LEVCNetworkQuality?.applySenderParams?.(pc, qualityLevel);
-
-    if (initiator) {
-      pc.createOffer()
-        .then(o => pc.setLocalDescription(o))
-        .then(() => postSignal({ type: 'offer', from: user.facebookId, to: peerId, sdp: pc.localDescription }))
-        .catch(console.error);
-    }
+    if (initiator) createAndSendOffer(pc, peerId);
     return pc;
   }
 
-  async function postSignal(msg) {
+  async function createAndSendOffer(pc, peerId) {
     try {
-      await fetch('/api/signal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: joinCode, ...msg })
-      });
+      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+      await pc.setLocalDescription(offer);
+      await postSignal({ type: 'offer', from: user.facebookId, to: peerId, sdp: pc.localDescription, id: 'off_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) });
+    } catch (e) { console.error('offer', e); }
+  }
+
+  function attachRemote(peerId, stream) {
+    let el = document.getElementById('remote-' + peerId);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'remote-' + peerId;
+      el.className = 'video-tile remote';
+      const video = document.createElement('video');
+      video.autoplay = true;
+      video.playsInline = true;
+      video.setAttribute('playsinline', '');
+      el.appendChild(video);
+      const label = document.createElement('div');
+      label.className = 'tile-label';
+      const p = room.participants.find((x) => x.id === peerId);
+      label.textContent = p?.name || 'Participant';
+      el.appendChild(label);
+      $('remote-container')?.appendChild(el);
+      $('no-participants')?.classList.add('hidden');
+      if (p) showAvatarOn(el, p);
+    }
+    const video = el.querySelector('video');
+    if (video && stream) {
+      video.srcObject = stream;
+      video.muted = !audioOutEnabled;
+      video.play?.().catch(() => {});
+      const hideAv = () => {
+        const av = el.querySelector('.tile-avatar');
+        if (av && stream.getVideoTracks().some((t) => t.enabled && t.readyState === 'live')) av.classList.remove('show');
+      };
+      video.addEventListener('loadeddata', hideAv);
+      setTimeout(hideAv, 1500);
+    }
+  }
+
+  async function postSignal(msg) {
+    const payload = { code: joinCode, ...msg, ts: Date.now() };
+    try {
+      await fetch('/api/signal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     } catch (e) {
       const key = 'levc_sig_' + joinCode;
       const q = JSON.parse(localStorage.getItem(key) || '[]');
-      q.push({ ...msg, ts: Date.now() });
-      localStorage.setItem(key, JSON.stringify(q.slice(-40)));
+      q.push(payload);
+      localStorage.setItem(key, JSON.stringify(q.slice(-60)));
     }
   }
 
   async function pollSignals() {
     try {
-      const res = await fetch(
-        '/api/signal?code=' + encodeURIComponent(joinCode) +
-        '&user=' + encodeURIComponent(user.facebookId)
-      );
+      const res = await fetch('/api/signal?code=' + encodeURIComponent(joinCode) + '&user=' + encodeURIComponent(user.facebookId));
       if (res.ok) {
         const msgs = await res.json();
         for (const m of msgs) await handleSignal(m);
@@ -314,45 +345,53 @@
     } catch (e) {
       const key = 'levc_sig_' + joinCode;
       const q = JSON.parse(localStorage.getItem(key) || '[]');
-      const mine = q.filter(m => m.to === user.facebookId || (!m.to && m.from !== user.facebookId));
+      const mine = q.filter((m) => m.to === user.facebookId || (!m.to && m.from !== user.facebookId));
       for (const m of mine) await handleSignal(m);
-      localStorage.setItem(key, JSON.stringify(q.filter(m => Date.now() - (m.ts || 0) < 60000)));
+      localStorage.setItem(key, JSON.stringify(q.filter((m) => Date.now() - (m.ts || 0) < 90000)));
     }
   }
 
   async function handleSignal(m) {
     if (!m || m.from === user.facebookId) return;
+    if (m.id && handledSignalIds.has(m.id)) return;
+    if (m.id) {
+      handledSignalIds.add(m.id);
+      if (handledSignalIds.size > 200) handledSignalIds = new Set([...handledSignalIds].slice(-100));
+    }
     const pc = ensurePeer(m.from, false);
     try {
       if (m.type === 'offer' && m.sdp) {
         await pc.setRemoteDescription(m.sdp);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        await postSignal({ type: 'answer', from: user.facebookId, to: m.from, sdp: pc.localDescription });
+        await postSignal({ type: 'answer', from: user.facebookId, to: m.from, sdp: pc.localDescription, id: 'ans_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) });
       } else if (m.type === 'answer' && m.sdp) {
-        if (!pc.currentRemoteDescription) await pc.setRemoteDescription(m.sdp);
+        if (pc.signalingState === 'have-local-offer') await pc.setRemoteDescription(m.sdp);
       } else if (m.type === 'ice' && m.candidate) {
-        await pc.addIceCandidate(m.candidate);
+        try { await pc.addIceCandidate(m.candidate); } catch (e) {}
       }
-    } catch (err) {
-      console.warn('signal', err);
-    }
+    } catch (err) { console.warn('signal', err); }
   }
 
   $('btn-mic')?.addEventListener('click', () => {
     micEnabled = !micEnabled;
-    localStream?.getAudioTracks().forEach(t => { t.enabled = micEnabled; });
+    localStream?.getAudioTracks().forEach((t) => { t.enabled = micEnabled; });
     $('btn-mic').classList.toggle('muted', !micEnabled);
+    $('btn-mic').classList.toggle('off', !micEnabled);
   });
   $('btn-cam')?.addEventListener('click', () => {
     camEnabled = !camEnabled;
-    localStream?.getVideoTracks().forEach(t => { t.enabled = camEnabled; });
+    localStream?.getVideoTracks().forEach((t) => { t.enabled = camEnabled; });
     $('btn-cam').classList.toggle('muted', !camEnabled);
+    $('btn-cam').classList.toggle('off', !camEnabled);
+    if (!camEnabled) showAvatarOn($('local-wrap'), user);
+    else $('local-wrap')?.querySelector('.tile-avatar')?.classList.remove('show');
   });
   $('btn-audio')?.addEventListener('click', () => {
     audioOutEnabled = !audioOutEnabled;
-    document.querySelectorAll('.video-tile.remote video').forEach(v => { v.muted = !audioOutEnabled; });
+    document.querySelectorAll('.video-tile.remote video').forEach((v) => { v.muted = !audioOutEnabled; });
     $('btn-audio').classList.toggle('muted', !audioOutEnabled);
+    $('btn-audio').classList.toggle('off', !audioOutEnabled);
   });
   $('copy-code')?.addEventListener('click', () => {
     const code = room?.joinCode || joinCode;
@@ -372,14 +411,10 @@
       room.closedAt = new Date().toISOString();
       await saveRoom();
       try {
-        await fetch('/api/rooms/close', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ joinCode, creatorId: user.facebookId })
-        });
+        await fetch('/api/rooms/close', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ joinCode, creatorId: user.facebookId }) });
       } catch (e) {}
     } else if (room) {
-      room.participants = room.participants.filter(p => p.id !== user.facebookId);
+      room.participants = room.participants.filter((p) => p.id !== user.facebookId);
       await saveRoom();
     }
     cleanupMedia();
@@ -390,24 +425,19 @@
   $('leave-no')?.addEventListener('click', cancelLeave);
 
   window.addEventListener('beforeunload', (e) => {
-    if (!isLeaving && room?.status === 'active') {
-      e.preventDefault();
-      e.returnValue = '';
-    }
+    if (!isLeaving && room?.status === 'active') { e.preventDefault(); e.returnValue = ''; }
   });
   history.pushState({ call: true }, '');
   window.addEventListener('popstate', () => {
-    if (!isLeaving) {
-      history.pushState({ call: true }, '');
-      requestLeave();
-    }
+    if (!isLeaving) { history.pushState({ call: true }, ''); requestLeave(); }
   });
 
   function cleanupMedia() {
     clearInterval(pollTimer);
-    Object.values(peers).forEach(pc => pc.close());
+    clearInterval(signalTimer);
+    Object.values(peers).forEach((pc) => pc.close());
     peers = {};
-    localStream?.getTracks().forEach(t => t.stop());
+    localStream?.getTracks().forEach((t) => t.stop());
     localStream = null;
     window.IPCallProtection?.stop();
     window.LEVCProtection?.stop();
