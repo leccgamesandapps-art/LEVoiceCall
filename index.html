@@ -24,12 +24,12 @@
         </svg>
       </div>
       <h1 class="logo-title">LEVoiceCall</h1>
-      <p class="logo-tagline">Independent voice & video rooms. One code. One call.</p>
+      <p class="logo-tagline">Independent voice &amp; video rooms. One code. One call.</p>
     </div>
 
     <div class="auth-card">
       <h2>Welcome</h2>
-      <p class="auth-desc">Sign in with Facebook to create or join secure call rooms.</p>
+      <p class="auth-desc">Sign in with Facebook or continue as a guest to create or join call rooms.</p>
       <div id="fb-status" class="fb-status hidden"></div>
       <button id="fb-login-btn" class="btn btn-facebook" type="button" aria-label="Continue with Facebook">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -37,7 +37,14 @@
         </svg>
         <span>Continue with Facebook</span>
       </button>
-      <p class="auth-note">We only request your public profile (name & picture). No posts or friends list.</p>
+
+      <div class="auth-divider"><span>or</span></div>
+
+      <button id="guest-login-btn" class="btn btn-guest" type="button" aria-label="Continue as a guest">
+        Continue as a Guest
+      </button>
+
+      <p class="auth-note">Facebook: public profile only. Guest: choose a display name next.</p>
       <div id="auth-loading" class="auth-loading hidden">
         <div class="loading-spinner"></div>
         <span>Signing in…</span>
