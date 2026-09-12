@@ -1,10 +1,10 @@
 /**
- * LEVoiceCall Authentication (Facebook only)
+ * LEVoiceCall Authentication — Facebook + Guest
  */
 (function (global) {
   const STORAGE_KEY = 'levc_user';
   const TOKEN_KEY = 'levc_fb_token';
-  const DEFAULT_APP_ID = '1065855442874700';
+  const GUEST_PENDING = 'levc_guest_pending';
 
   function getUser() {
     try {
@@ -19,24 +19,39 @@
     if (!user) {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(GUEST_PENDING);
       return;
     }
+    const isGuest = !!(user.isGuest || user.authType === 'guest');
+    const id = user.userId || user.id || user.facebookId || ('guest_' + Date.now());
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      userId: user.userId || user.id,
-      facebookId: user.facebookId || user.id,
+      userId: id,
+      facebookId: isGuest ? id : (user.facebookId || user.id || id),
       name: user.name,
       profilePicture: user.profilePicture || user.picture?.data?.url || user.picture || '',
+      isGuest: isGuest,
+      authType: isGuest ? 'guest' : 'facebook',
       createdAt: user.createdAt || new Date().toISOString()
     }));
+    if (isGuest) localStorage.removeItem(GUEST_PENDING);
   }
 
   function isAuthenticated() {
     const u = getUser();
-    return !!(u && u.facebookId && u.name);
+    return !!(u && u.name && (u.facebookId || u.userId));
+  }
+
+  function isGuest() {
+    const u = getUser();
+    return !!(u && u.isGuest);
+  }
+
+  function needsGuestName() {
+    return localStorage.getItem(GUEST_PENDING) === '1';
   }
 
   function requireAuth() {
-    if (!isAuthenticated()) {
+    if (!isAuthenticated() && !needsGuestName()) {
       window.location.replace('/index.html');
       return false;
     }
@@ -51,10 +66,49 @@
 
   function logout() {
     setUser(null);
-    if (typeof FB !== 'undefined' && FB.getAccessToken()) {
-      try { FB.logout(() => {}); } catch (e) {}
+    if (typeof FB !== 'undefined') {
+      try {
+        if (FB.getAccessToken()) FB.logout(() => {});
+      } catch (e) {}
     }
     window.location.replace('/index.html');
+  }
+
+  function continueAsGuest() {
+    localStorage.setItem(GUEST_PENDING, '1');
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    window.location.replace('/main/main.html');
+  }
+
+  function randomGuestCode() {
+    let s = '';
+    for (let i = 0; i < 10; i++) {
+      s += Math.floor(Math.random() * 10);
+    }
+    return s;
+  }
+
+  function completeGuest(displayName) {
+    const trimmed = (displayName || '').trim();
+    let name;
+    if (!trimmed) {
+      name = 'guest#' + randomGuestCode();
+    } else {
+      name = trimmed.slice(0, 40);
+    }
+    const id = 'guest_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    setUser({
+      userId: id,
+      facebookId: id,
+      name: name,
+      profilePicture: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(name) + '&background=5b6af0&color=fff',
+      isGuest: true,
+      authType: 'guest',
+      createdAt: new Date().toISOString()
+    });
+    localStorage.removeItem(GUEST_PENDING);
+    return getUser();
   }
 
   function onFBReady() {
@@ -73,26 +127,27 @@
         showStatus('Could not load Facebook profile.', true);
         return;
       }
-      const user = {
+      setUser({
         userId: res.id,
         facebookId: res.id,
         name: res.name,
         profilePicture: res.picture?.data?.url || '',
+        isGuest: false,
+        authType: 'facebook',
         createdAt: new Date().toISOString()
-      };
-      setUser(user);
+      });
       if (accessToken) localStorage.setItem(TOKEN_KEY, accessToken);
+      localStorage.removeItem(GUEST_PENDING);
       window.location.replace('/main/main.html');
     });
   }
 
   function loginWithFacebook() {
-    const appId = window.LEVC_FB_APP_ID || localStorage.getItem('levc_fb_app_id') || DEFAULT_APP_ID;
+    const appId = window.LEVC_FB_APP_ID || localStorage.getItem('levc_fb_app_id') || '1065855442874700';
     if (!appId || appId === '0') {
-      showStatus('Facebook App ID is not configured.', true);
+      showStatus('Please configure Facebook App ID.', true);
       return;
     }
-
     if (typeof FB === 'undefined') {
       showStatus('Facebook SDK still loading. Try again in a moment.', true);
       return;
@@ -125,6 +180,8 @@
   document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('fb-login-btn');
     if (btn) btn.addEventListener('click', loginWithFacebook);
+    const guestBtn = document.getElementById('guest-login-btn');
+    if (guestBtn) guestBtn.addEventListener('click', continueAsGuest);
     redirectIfAuthed();
   });
 
@@ -132,9 +189,14 @@
     getUser,
     setUser,
     isAuthenticated,
+    isGuest,
+    needsGuestName,
     requireAuth,
     logout,
     onFBReady,
-    loginWithFacebook
+    loginWithFacebook,
+    continueAsGuest,
+    completeGuest,
+    randomGuestCode
   };
 })(window);
