@@ -1,4 +1,4 @@
-/* LEVoiceCall — In-call UI */
+/* LEVoiceCall — In-call UI (Messenger-style unified) */
 
 .call-body {
   height: 100vh;
@@ -30,6 +30,41 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   border-bottom: 1px solid #2e3348;
   z-index: 10;
 }
+
+.top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.top-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.call-timer {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #a0a8c0;
+  letter-spacing: 0.05em;
+}
+
+.privacy-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(0, 201, 167, 0.18);
+  color: #00c9a7;
+  border: 1px solid rgba(0, 201, 167, 0.35);
+}
+.privacy-badge.hidden { display: none; }
 
 .join-code-box {
   display: inline-flex;
@@ -178,7 +213,7 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   text-align: center;
   color: #a0a8c0;
   padding: 32px 20px;
-  max-width: 320px;
+  max-width: 340px;
 }
 .empty-stage.hidden { display: none; }
 .empty-avatar { font-size: 3rem; margin-bottom: 12px; }
@@ -196,6 +231,11 @@ body.in-call .call-shell { opacity: 1; pointer-events: auto; }
   letter-spacing: 0.2em;
   font-weight: 700;
   color: #7b88f5;
+}
+.hint-sub {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: #6b7394;
 }
 
 .participants-panel {
@@ -376,7 +416,7 @@ html.levc-protect-blur .video-tile {
   gap: 8px;
   padding: 20px;
 }
-/* Softened watermark – less dense + lower opacity */
+/* Softened watermark */
 #levc-watermark {
   position: fixed;
   inset: 0;
