@@ -1,6 +1,6 @@
 /**
  * LEVoiceCall — IPCallProtection
- * No full-page watermark. Burns mark into video frames only + blackout when tab hidden.
+ * No diagonal name/CODE spam. Blackout when tab hidden + tiny corner badge on video.
  */
 (function (global) {
   const STATE = {
@@ -31,8 +31,8 @@
         veil.setAttribute('aria-hidden', 'true');
         veil.innerHTML =
           '<div class="levc-protect-msg">' +
-          '<strong>Protected content</strong>' +
-          '<span>Screenshot / recording protection is on</span></div>';
+          '<strong>Protected</strong>' +
+          '<span>Capture protection is on for this room</span></div>';
         document.body.appendChild(veil);
       }
       veil.classList.add('on');
@@ -41,13 +41,9 @@
     }
   }
 
-  function ensureWatermark(text) {
-    // No full-page overlay — only canvas watermark on video frames
+  function stripPageWatermark() {
     document.getElementById('levc-watermark')?.remove();
-  }
-
-  function clearWatermark() {
-    document.getElementById('levc-watermark')?.remove();
+    document.querySelectorAll('#levc-watermark, .levc-watermark').forEach((el) => el.remove());
   }
 
   function bindProtectedVideos(label) {
@@ -67,38 +63,22 @@
     });
   }
 
-  function drawWatermark(ctx, w, h, label) {
-    const text = label || STATE.label || 'LEVoiceCall';
-    const size = Math.max(16, Math.floor(Math.min(w, h) / 18));
+  function drawFrame(ctx, video, w, h, label) {
+    ctx.drawImage(video, 0, 0, w, h);
+    const code = (label || '').split(' · ').pop() || 'LEVC';
+    const badge = '🔒 ' + String(code).slice(0, 10);
+    const fontSize = Math.max(10, Math.floor(Math.min(w, h) / 28));
     ctx.save();
-    ctx.globalAlpha = STATE.screenshot ? 0.42 : 0.32;
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-    ctx.lineWidth = 2;
-    ctx.font = 'bold ' + size + 'px Inter, system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.translate(w / 2, h / 2);
-    ctx.rotate(-Math.PI / 6);
-    const stepY = size * 2.2;
-    const stepX = Math.max(text.length * size * 0.55, w * 0.35);
-    for (let y = -h; y <= h; y += stepY) {
-      for (let x = -w; x <= w; x += stepX) {
-        ctx.strokeText(text, x, y);
-        ctx.fillText(text, x, y);
-      }
-    }
-    ctx.restore();
-    ctx.save();
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = 'rgba(91,106,240,0.9)';
-    const badge = 'PROTECTED · ' + (text.split(' · ')[1] || text).slice(0, 12);
-    ctx.font = 'bold ' + Math.max(11, Math.floor(size * 0.55)) + 'px sans-serif';
-    const pad = 8;
+    ctx.font = 'bold ' + fontSize + 'px system-ui, sans-serif';
     const tw = ctx.measureText(badge).width;
-    ctx.fillRect(pad, h - size - pad * 2, tw + pad * 2, size + pad);
-    ctx.fillStyle = '#fff';
-    ctx.fillText(badge, pad * 2, h - pad * 1.5);
+    const pad = 6;
+    const bh = fontSize + pad * 2;
+    const bw = tw + pad * 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(pad, h - bh - pad, bw, bh);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(badge, pad * 2, h - bh / 2 - pad);
     ctx.restore();
   }
 
@@ -118,8 +98,7 @@
       const ctx = canvas.getContext('2d', { alpha: false });
       if (!ctx) return;
       try {
-        ctx.drawImage(video, 0, 0, w, h);
-        drawWatermark(ctx, w, h, label);
+        drawFrame(ctx, video, w, h, label);
       } catch (e) {}
     });
     STATE.raf = requestAnimationFrame(drawLoop);
@@ -155,16 +134,6 @@
     if (!document.hidden) setObscured(false);
   }
 
-  function onCapture() {
-    if (!STATE.active) return;
-    if (STATE.screenshot || STATE.screenRecord) {
-      setObscured(true);
-      setTimeout(() => {
-        if (!document.hidden && document.hasFocus()) setObscured(false);
-      }, 2500);
-    }
-  }
-
   function start(settings, opts) {
     stop();
     STATE.active = true;
@@ -173,47 +142,42 @@
     if (!STATE.screenshot && !STATE.screenRecord) return;
 
     STATE.label = opts?.userLabel || 'LEVoiceCall';
-    const selectors = opts?.selectors || ['.media-stage', '.call-shell', '.video-tile', '#remote-container', '#local-wrap'];
+    const selectors = opts?.selectors || [
+      '.media-stage', '.call-shell', '.video-tile', '#remote-container', '#local-wrap'
+    ];
     sensitive = selectors.map((s) => document.querySelector(s)).filter(Boolean);
 
     document.documentElement.classList.add('levc-ip-protect');
-    if (STATE.screenshot) document.documentElement.classList.add('levc-ss-protect');
-    if (STATE.screenRecord) document.documentElement.classList.add('levc-sr-protect');
-
-    ensureWatermark(STATE.label);
-    document.getElementById('levc-watermark')?.remove();
+    stripPageWatermark();
 
     setTimeout(() => {
+      stripPageWatermark();
       bindProtectedVideos(STATE.label);
       startDrawLoop();
-    }, 300);
+    }, 200);
 
     STATE.capturePoll = setInterval(() => {
       if (!STATE.active) return;
+      stripPageWatermark();
       bindProtectedVideos(STATE.label);
       startDrawLoop();
       if ((STATE.screenshot || STATE.screenRecord) && document.hidden) setObscured(true);
-    }, 800);
+    }, 1000);
 
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('blur', onWindowBlur);
     window.addEventListener('focus', onWindowFocus);
-    document.addEventListener('capture', onCapture, true);
-    window.addEventListener('keyup', function (e) {
-      if (STATE.screenshot && e.key === 'PrintScreen') onCapture();
-    }, true);
   }
 
   function stop() {
     STATE.active = false;
     setObscured(false);
-    clearWatermark();
+    stripPageWatermark();
     stopDrawLoop();
     document.documentElement.classList.remove('levc-ip-protect', 'levc-ss-protect', 'levc-sr-protect');
     document.removeEventListener('visibilitychange', onVisibility);
     window.removeEventListener('blur', onWindowBlur);
     window.removeEventListener('focus', onWindowFocus);
-    document.removeEventListener('capture', onCapture, true);
     if (STATE.capturePoll) {
       clearInterval(STATE.capturePoll);
       STATE.capturePoll = null;
