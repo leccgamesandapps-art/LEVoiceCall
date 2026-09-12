@@ -1,5 +1,5 @@
 /**
- * Simple WebRTC signaling store (per-room queues)
+ * WebRTC signaling store (per-room queues)
  */
 const queues = globalThis.__levc_sig || (globalThis.__levc_sig = new Map());
 
@@ -16,8 +16,8 @@ module.exports = async function handler(req, res) {
       if (!code) return res.status(400).json({ error: 'code required' });
       if (!queues.has(code)) queues.set(code, []);
       const q = queues.get(code);
-      q.push({ ...body, ts: Date.now() });
-      while (q.length > 50) q.shift();
+      q.push({ ...body, ts: Date.now(), delivered: [] });
+      while (q.length > 80) q.shift();
       return res.status(200).json({ ok: true });
     }
 
@@ -26,8 +26,20 @@ module.exports = async function handler(req, res) {
       const user = req.query.user || '';
       if (!code) return res.status(400).json({ error: 'code required' });
       const q = queues.get(code) || [];
-      const forUser = q.filter(m => !m.to || m.to === user);
-      queues.set(code, q.filter(m => m.to && m.to !== user));
+      const now = Date.now();
+      const alive = q.filter((m) => now - (m.ts || 0) < 90000);
+      queues.set(code, alive);
+
+      const forUser = [];
+      for (const m of alive) {
+        if (m.from === user) continue;
+        if (m.to && m.to !== user) continue;
+        const delivered = m.delivered || [];
+        if (delivered.includes(user)) continue;
+        forUser.push(m);
+        delivered.push(user);
+        m.delivered = delivered;
+      }
       return res.status(200).json(forUser);
     }
 
