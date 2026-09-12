@@ -1,5 +1,5 @@
 /**
- * LEVoiceCall — Unified Messenger-style Call (audio + video)
+ * LEVoiceCall — Unified call + mobile WebRTC (3G/4G/2.4GHz Wi‑Fi)
  */
 (function () {
   if (!window.LEVCAuth?.requireAuth()) return;
@@ -20,14 +20,31 @@
   let micEnabled = true;
   let camEnabled = true;
   let audioOutEnabled = true;
-  let qualityLevel = window.LEVCNetworkQuality?.initFromNetwork?.() || 'medium';
+  let qualityLevel = window.LEVCNetworkQuality?.initFromNetwork?.() || 'low';
   let handledSignalIds = new Set();
 
   const iceServers = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun.cloudflare.com:3478' }
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80?transport=tcp',
+        'turns:openrelay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
   ];
 
   function paintCode(code) {
@@ -126,32 +143,26 @@
     showShell();
     startCallTimer();
     setConnStatus('Connecting media…', 'wait');
+    document.getElementById('net-quality')?.remove();
 
-    // Unified: always try audio + video
     try {
-      qualityLevel = window.LEVCNetworkQuality?.initFromNetwork?.() || qualityLevel || 'medium';
-      let constraints;
-      if (window.LEVCNetworkQuality) {
-        constraints = window.LEVCNetworkQuality.getConstraints('video', qualityLevel);
-      } else {
-        constraints = {
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24 } }
-        };
-      }
+      qualityLevel = window.LEVCNetworkQuality?.initFromNetwork?.() || qualityLevel || 'low';
+      let constraints = window.LEVCNetworkQuality
+        ? window.LEVCNetworkQuality.getConstraints('video', qualityLevel)
+        : {
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+            video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 360 }, frameRate: { ideal: 15 } }
+          };
       try {
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (videoErr) {
-        // Fallback to audio-only if camera fails
         localStream = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
         });
         camEnabled = false;
       }
       localStream.getTracks().forEach((t) => { t.enabled = true; });
-      if (!camEnabled) {
-        localStream.getVideoTracks().forEach((t) => { t.enabled = false; });
-      }
+      if (!camEnabled) localStream.getVideoTracks().forEach((t) => { t.enabled = false; });
       startLocalPreview();
       updateQualityBadge();
       setConnStatus(room.participants.length <= 1 ? 'Waiting for others…' : 'Connecting peers…', 'wait');
@@ -173,15 +184,13 @@
     if (window.IPCallProtection) window.IPCallProtection.start(prot, protectOpts);
     else window.LEVCProtection?.start(prot, protectOpts);
 
-    // Privacy badge
     if (room.screenshotProtection || room.screenRecordingProtection) {
       $('privacy-badge')?.classList.remove('hidden');
     }
 
     if (window.LEVCNetworkQuality) {
-      window.LEVCNetworkQuality.startMonitor(peers, (level, info) => {
+      window.LEVCNetworkQuality.startMonitor(peers, (level) => {
         qualityLevel = level;
-        updateQualityBadge(info);
         window.LEVCNetworkQuality.applyToAllPeers(peers, level);
       });
     }
@@ -206,7 +215,6 @@
     if ($('call-name')) $('call-name').textContent = room.callName || 'Call';
     if ($('call-type-badge')) $('call-type-badge').textContent = 'Call';
     if ($('call-creator')) $('call-creator').textContent = 'Creator: ' + (room.creatorName || '—');
-    // Camera always available in unified mode
     $('btn-cam')?.classList.remove('hidden');
     renderParticipants();
   }
@@ -248,21 +256,15 @@
   }
 
   function hideAvatarOn(wrap) {
-    const av = wrap?.querySelector('.tile-avatar');
-    if (av) av.classList.remove('show');
+    wrap?.querySelector('.tile-avatar')?.classList.remove('show');
   }
 
   function startLocalPreview() {
     const v = $('local-video');
     const wrap = $('local-wrap');
     if (!v || !localStream) return;
-
     v.classList.add('mirrored');
-
-    const hasLiveVideo = localStream.getVideoTracks().some(
-      (t) => t.enabled && t.readyState === 'live'
-    );
-
+    const hasLiveVideo = localStream.getVideoTracks().some((t) => t.enabled && t.readyState === 'live');
     if (!hasLiveVideo || !camEnabled) {
       v.style.display = 'none';
       wrap?.classList.add('audio-only');
@@ -277,15 +279,10 @@
       if (v.readyState >= 2) tryPlay();
       else {
         v.addEventListener('loadedmetadata', tryPlay, { once: true });
-        v.addEventListener('loadeddata', tryPlay, { once: true });
         setTimeout(tryPlay, 400);
-        setTimeout(tryPlay, 1200);
       }
     }
-
-    if ($('local-label')) {
-      $('local-label').textContent = (user.name || 'You') + ' (you)';
-    }
+    if ($('local-label')) $('local-label').textContent = (user.name || 'You') + ' (you)';
   }
 
   async function saveRoom() {
@@ -323,7 +320,13 @@
 
   function ensurePeer(peerId, initiator) {
     if (peers[peerId]) return peers[peerId];
-    const pc = new RTCPeerConnection({ iceServers, iceCandidatePoolSize: 4 });
+    const pc = new RTCPeerConnection({
+      iceServers,
+      iceCandidatePoolSize: 8,
+      iceTransportPolicy: 'all',
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require'
+    });
     peers[peerId] = pc;
     if (localStream) localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
     pc.ontrack = (ev) => {
@@ -332,18 +335,31 @@
     };
     pc.onicecandidate = async (ev) => {
       if (ev.candidate) {
-        await postSignal({ type: 'ice', from: user.facebookId, to: peerId, candidate: ev.candidate, id: 'ice_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) });
+        await postSignal({
+          type: 'ice',
+          from: user.facebookId,
+          to: peerId,
+          candidate: ev.candidate,
+          id: 'ice_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
+        });
       }
     };
     pc.onconnectionstatechange = () => {
       const st = pc.connectionState;
       if (st === 'connected') setConnStatus('Connected', 'ok');
       else if (st === 'connecting') setConnStatus('Connecting peers…', 'wait');
-      else if (st === 'failed') { setConnStatus('Reconnecting…', 'warn'); try { pc.restartIce(); } catch (e) {} }
-      else if (st === 'disconnected') setConnStatus('Unstable…', 'warn');
+      else if (st === 'failed') {
+        setConnStatus('Reconnecting…', 'warn');
+        try { pc.restartIce(); } catch (e) {}
+      } else if (st === 'disconnected') {
+        setConnStatus('Unstable…', 'warn');
+        try { pc.restartIce(); } catch (e) {}
+      }
     };
     pc.oniceconnectionstatechange = () => {
-      if (pc.iceConnectionState === 'failed') { try { pc.restartIce(); } catch (e) {} }
+      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+        try { pc.restartIce(); } catch (e) {}
+      }
     };
     window.LEVCNetworkQuality?.applySenderParams?.(pc, qualityLevel);
     if (initiator) createAndSendOffer(pc, peerId);
@@ -354,8 +370,16 @@
     try {
       const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
       await pc.setLocalDescription(offer);
-      await postSignal({ type: 'offer', from: user.facebookId, to: peerId, sdp: pc.localDescription, id: 'off_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) });
-    } catch (e) { console.error('offer', e); }
+      await postSignal({
+        type: 'offer',
+        from: user.facebookId,
+        to: peerId,
+        sdp: pc.localDescription,
+        id: 'off_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
+      });
+    } catch (e) {
+      console.error('offer', e);
+    }
   }
 
   function attachRemote(peerId, stream) {
@@ -395,7 +419,11 @@
   async function postSignal(msg) {
     const payload = { code: joinCode, ...msg, ts: Date.now() };
     try {
-      await fetch('/api/signal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      await fetch('/api/signal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
     } catch (e) {
       const key = 'levc_sig_' + joinCode;
       const q = JSON.parse(localStorage.getItem(key) || '[]');
@@ -406,7 +434,10 @@
 
   async function pollSignals() {
     try {
-      const res = await fetch('/api/signal?code=' + encodeURIComponent(joinCode) + '&user=' + encodeURIComponent(user.facebookId));
+      const res = await fetch(
+        '/api/signal?code=' + encodeURIComponent(joinCode) +
+        '&user=' + encodeURIComponent(user.facebookId)
+      );
       if (res.ok) {
         const msgs = await res.json();
         for (const m of msgs) await handleSignal(m);
@@ -433,13 +464,21 @@
         await pc.setRemoteDescription(m.sdp);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        await postSignal({ type: 'answer', from: user.facebookId, to: m.from, sdp: pc.localDescription, id: 'ans_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) });
+        await postSignal({
+          type: 'answer',
+          from: user.facebookId,
+          to: m.from,
+          sdp: pc.localDescription,
+          id: 'ans_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
+        });
       } else if (m.type === 'answer' && m.sdp) {
         if (pc.signalingState === 'have-local-offer') await pc.setRemoteDescription(m.sdp);
       } else if (m.type === 'ice' && m.candidate) {
         try { await pc.addIceCandidate(m.candidate); } catch (e) {}
       }
-    } catch (err) { console.warn('signal', err); }
+    } catch (err) {
+      console.warn('signal', err);
+    }
   }
 
   $('btn-mic')?.addEventListener('click', () => {
@@ -454,7 +493,6 @@
     localStream?.getVideoTracks().forEach((t) => { t.enabled = camEnabled; });
     $('btn-cam').classList.toggle('muted', !camEnabled);
     $('btn-cam').classList.toggle('off', !camEnabled);
-
     const wrap = $('local-wrap');
     const v = $('local-video');
     if (!camEnabled) {
@@ -497,7 +535,11 @@
       room.closedAt = new Date().toISOString();
       await saveRoom();
       try {
-        await fetch('/api/rooms/close', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ joinCode, creatorId: user.facebookId }) });
+        await fetch('/api/rooms/close', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ joinCode, creatorId: user.facebookId })
+        });
       } catch (e) {}
     } else if (room) {
       room.participants = room.participants.filter((p) => p.id !== user.facebookId);
@@ -511,11 +553,17 @@
   $('leave-no')?.addEventListener('click', cancelLeave);
 
   window.addEventListener('beforeunload', (e) => {
-    if (!isLeaving && room?.status === 'active') { e.preventDefault(); e.returnValue = ''; }
+    if (!isLeaving && room?.status === 'active') {
+      e.preventDefault();
+      e.returnValue = '';
+    }
   });
   history.pushState({ call: true }, '');
   window.addEventListener('popstate', () => {
-    if (!isLeaving) { history.pushState({ call: true }, ''); requestLeave(); }
+    if (!isLeaving) {
+      history.pushState({ call: true }, '');
+      requestLeave();
+    }
   });
 
   function cleanupMedia() {
@@ -531,18 +579,8 @@
     window.LEVCNetworkQuality?.stopMonitor();
   }
 
-  function updateQualityBadge(info) {
-    let el = document.getElementById('net-quality');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'net-quality';
-      el.className = 'net-quality';
-      document.querySelector('.call-top')?.appendChild(el);
-    }
-    const level = (info && info.level) || qualityLevel || 'medium';
-    const label = window.LEVCNetworkQuality?.LEVELS?.[level]?.label || level;
-    el.textContent = 'Net: ' + label;
-    el.dataset.level = level;
+  function updateQualityBadge() {
+    document.getElementById('net-quality')?.remove();
   }
 
   init();
