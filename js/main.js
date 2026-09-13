@@ -9,15 +9,24 @@
 
   function showGuestNameModal() {
     const modal = $('guest-name-modal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    $('guest-name-continue')?.addEventListener('click', () => {
-      const name = ($('guest-name-input')?.value || '').trim();
-      window.LEVCAuth.completeGuest(name);
+    if (!modal) {
+      window.LEVCAuth.completeGuest('');
       user = window.LEVCAuth.getUser();
-      modal.classList.add('hidden');
       fillProfile();
-    }, { once: true });
+      return;
+    }
+    modal.classList.remove('hidden');
+    $('guest-name-continue')?.addEventListener(
+      'click',
+      () => {
+        const name = ($('guest-name-input')?.value || '').trim();
+        window.LEVCAuth.completeGuest(name);
+        user = window.LEVCAuth.getUser();
+        modal.classList.add('hidden');
+        fillProfile();
+      },
+      { once: true }
+    );
   }
 
   function fillProfile() {
@@ -29,20 +38,18 @@
         img.src =
           user.profilePicture ||
           'https://ui-avatars.com/api/?name=' +
-            encodeURIComponent(user.name) +
+            encodeURIComponent(user.name || 'User') +
             '&background=5b6af0&color=fff';
-        img.alt = user.name;
+        img.alt = user.name || 'User';
       }
     });
     const names = document.querySelectorAll('#nav-name, #panel-name');
     names.forEach((el) => {
-      if (el) el.textContent = user.name;
+      if (el) el.textContent = user.name || 'User';
     });
     const statusEl = document.getElementById('panel-status');
     if (statusEl) {
-      if (user.authType === 'leid' || user.leid)
-        statusEl.textContent = 'LEID · ' + (user.leid || user.name);
-      else if (user.isGuest || user.authType === 'guest') statusEl.textContent = 'Guest';
+      if (user.isGuest || user.authType === 'guest') statusEl.textContent = 'Guest';
       else statusEl.textContent = 'Facebook';
     }
   }
@@ -104,7 +111,7 @@
           const n = await navigator.permissions.query({ name: 'notifications' });
           set('perm-notif', n.state);
         } catch (e) {
-          set('perm-notif', Notification?.permission || '—');
+          set('perm-notif', (typeof Notification !== 'undefined' && Notification.permission) || '—');
         }
       }
     } catch (e) {}
