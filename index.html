@@ -9,7 +9,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css" />
-  <link rel="stylesheet" href="/css/leid-auth.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📞</text></svg>" />
 </head>
 <body>
@@ -25,12 +24,12 @@
         </svg>
       </div>
       <h1 class="logo-title">LEVoiceCall</h1>
-      <p class="logo-tagline">Independent voice & video rooms. One code. One call.</p>
+      <p class="logo-tagline">Independent voice &amp; video rooms. One code. One call.</p>
     </div>
 
     <div class="auth-card">
       <h2>Welcome</h2>
-      <p class="auth-desc">Sign in to create or join secure call rooms.</p>
+      <p class="auth-desc">Sign in with Facebook to create or join secure call rooms.</p>
 
       <div id="fb-status" class="fb-status hidden"></div>
 
@@ -47,18 +46,7 @@
         Continue as a Guest
       </button>
 
-      <div class="auth-divider"><span>or</span></div>
-
-      <button id="leid-login-btn" class="btn btn-leid" type="button" aria-label="Continue with LEID">
-        <span class="leid-badge">LEID</span>
-        <span>Continue with LEID</span>
-      </button>
-      <p class="auth-leid-hint">
-        From <a href="https://officialleweb.vercel.app" target="_blank" rel="noopener">OfficialLEWeb</a>
-        — real shared LEID (same Facebook App as OfficialLEWeb).
-      </p>
-
-      <p class="auth-note">Facebook & LEID use Meta App LEID ACCOUNT. Guest: display name next.</p>
+      <p class="auth-note">Facebook: public profile only. Guest: choose a display name next.</p>
 
       <div id="auth-loading" class="auth-loading hidden">
         <div class="loading-spinner"></div>
@@ -79,9 +67,9 @@
 
   <div id="fb-root"></div>
   <script>
-    window.LEVC_FB_APP_ID = '2338993963576572';
     window.fbAsyncInit = function () {
-      FB.init({ appId: '2338993963576572', cookie: true, xfbml: false, version: 'v21.0' });
+      const FB_APP_ID = window.LEVC_FB_APP_ID || localStorage.getItem('levc_fb_app_id') || '1065855442874700';
+      FB.init({ appId: FB_APP_ID || '0', cookie: true, xfbml: false, version: 'v21.0' });
       FB.AppEvents.logPageView();
       if (window.LEVCAuth) window.LEVCAuth.onFBReady();
     };
