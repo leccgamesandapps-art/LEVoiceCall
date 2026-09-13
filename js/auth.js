@@ -157,6 +157,10 @@
   }
 
   function redirectIfAuthed() {
+    // Only on the sign-in page — never on main/history/about/call (prevents infinite reload)
+    const path = (location.pathname || '').replace(/\/+$/, '') || '/';
+    const onLanding = path === '/' || path.endsWith('index.html');
+    if (!onLanding) return;
     if (isAuthenticated() && !needsGuestName()) {
       window.location.replace('/main/main.html');
     }
