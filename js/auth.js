@@ -1,15 +1,10 @@
 /**
- * LEVoiceCall Auth — Facebook + Guest + LEID (balanced with OfficialLEWeb)
- * Shared Meta App: LEID ACCOUNT 2338993963576572
- * Cross-origin LEID: OfficialLEWeb ?return_to= handoff with ?leid=&name=&fb=
+ * LEVoiceCall Authentication — Facebook + Guest only
  */
 (function (global) {
   const STORAGE_KEY = 'levc_user';
   const TOKEN_KEY = 'levc_fb_token';
   const GUEST_PENDING = 'levc_guest_pending';
-  const LEID_LINK_KEY = 'levc_leid_link';
-  const OFFICIAL_LEWEB = 'https://officialleweb.vercel.app';
-  const FB_APP_ID = '2338993963576572';
 
   function getUser() {
     try {
@@ -29,7 +24,6 @@
     }
     const isGuest = !!(user.isGuest || user.authType === 'guest');
     const id = user.userId || user.id || user.facebookId || ('guest_' + Date.now());
-    const authType = isGuest ? 'guest' : user.authType || (user.leid ? 'leid' : 'facebook');
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
@@ -38,8 +32,7 @@
         name: user.name || 'User',
         profilePicture: user.profilePicture || '',
         isGuest: isGuest,
-        authType,
-        leid: user.leid || null,
+        authType: isGuest ? 'guest' : 'facebook',
         loggedInAt: new Date().toISOString()
       })
     );
@@ -115,146 +108,19 @@
     el.classList.toggle('error', !!isError);
   }
 
-  function setLEIDUser(session) {
-    const leid = String(session.leid || '').trim();
-    if (!leid) return null;
-    const name = (session.name || leid).trim();
-    const facebookId = session.facebookId || null;
-    setUser({
-      userId: facebookId || 'leid_' + leid.toLowerCase(),
-      facebookId: facebookId || 'leid_' + leid.toLowerCase(),
-      name,
-      profilePicture: session.picture || '',
-      isGuest: false,
-      authType: 'leid',
-      leid
-    });
-    try {
-      localStorage.setItem(
-        LEID_LINK_KEY,
-        JSON.stringify({
-          leid,
-          facebookId,
-          linkedAt: new Date().toISOString(),
-          site: 'levoicecall',
-          from: session.from || 'manual'
-        })
-      );
-      localStorage.setItem(
-        'officialleweb_session',
-        JSON.stringify({
-          leid,
-          name,
-          loggedInAt: Date.now(),
-          viaFacebook: !!facebookId,
-          facebookId: facebookId || undefined
-        })
-      );
-    } catch (e) {}
-    return getUser();
-  }
-
-  function consumeLEIDFromURL() {
-    const p = new URLSearchParams(location.search);
-    const leid = p.get('leid') || p.get('LEID') || p.get('username');
-    if (!leid) return null;
-    const session = {
-      leid: String(leid).trim(),
-      name: p.get('name') || String(leid).trim(),
-      facebookId: p.get('fb') || p.get('facebookId') || null,
-      picture: p.get('picture') || '',
-      from: p.get('from') || 'url'
-    };
-    try {
-      const u = new URL(location.href);
-      ['leid', 'LEID', 'username', 'name', 'fb', 'facebookId', 'picture', 'from', 'return_to', 'app'].forEach(
-        (k) => u.searchParams.delete(k)
-      );
-      history.replaceState({}, '', u.pathname + (u.search || ''));
-    } catch (e) {}
-    return session;
-  }
-
-  function readLocalLEIDSession() {
-    const keys = [
-      'officialleweb_session',
-      'leid_session',
-      'officialleweb_user',
-      'leid_user',
-      LEID_LINK_KEY
-    ];
-    for (const k of keys) {
-      try {
-        const raw = localStorage.getItem(k);
-        if (!raw) continue;
-        const o = JSON.parse(raw);
-        const leid = o.leid || o.LEID || o.username;
-        if (leid) {
-          return {
-            leid: String(leid),
-            name: o.name || o.displayName || String(leid),
-            facebookId: o.facebookId || o.fbId || null,
-            picture: o.picture || o.profilePicture || '',
-            from: 'local'
-          };
-        }
-      } catch (e) {}
-    }
-    return null;
-  }
-
-  /** Real SSO: go to OfficialLEWeb, login, return with ?leid=&name=&fb= */
-  function loginWithLEID() {
-    let session = consumeLEIDFromURL();
-    if (!session) session = readLocalLEIDSession();
-    if (session) {
-      setLEIDUser(session);
-      showStatus('Signed in with LEID: ' + session.leid, false);
-      setTimeout(() => {
-        window.location.replace('/main/main.html');
-      }, 350);
-      return;
-    }
-    const returnUrl = encodeURIComponent(location.origin + '/index.html');
-    window.location.href = OFFICIAL_LEWEB + '/?return_to=' + returnUrl + '&app=levoicecall';
-  }
-
   function fetchMe(accessToken) {
-    FB.api('/me', { fields: 'id,name,picture.type(large),email' }, function (res) {
+    FB.api('/me', { fields: 'id,name,picture.type(large)' }, function (res) {
       if (!res || res.error) {
         showStatus('Could not load Facebook profile.', true);
         return;
       }
-      const picture = (res.picture && res.picture.data && res.picture.data.url) || '';
-      // Same LEID rule as OfficialLEWeb: Facebook name → LEID
-      let leid = (res.name || '').trim().replace(/\s+/g, '_');
-      if (!leid) leid = 'fb_' + res.id;
-      try {
-        const link = JSON.parse(localStorage.getItem(LEID_LINK_KEY) || 'null');
-        if (link && link.facebookId && String(link.facebookId) === String(res.id) && link.leid) {
-          leid = link.leid;
-        }
-      } catch (e) {}
       setUser({
         userId: res.id,
         facebookId: res.id,
         name: res.name || 'Facebook User',
-        profilePicture: picture,
-        authType: 'facebook',
-        leid: leid
+        profilePicture: (res.picture && res.picture.data && res.picture.data.url) || '',
+        authType: 'facebook'
       });
-      try {
-        localStorage.setItem(
-          'officialleweb_session',
-          JSON.stringify({
-            leid,
-            name: res.name || leid,
-            facebookId: res.id,
-            viaFacebook: true,
-            loggedInAt: Date.now()
-          })
-        );
-      } catch (e) {}
       if (accessToken) localStorage.setItem(TOKEN_KEY, accessToken);
       localStorage.removeItem(GUEST_PENDING);
       window.location.replace('/main/main.html');
@@ -262,6 +128,12 @@
   }
 
   function loginWithFacebook() {
+    const appId =
+      window.LEVC_FB_APP_ID || localStorage.getItem('levc_fb_app_id') || '1065855442874700';
+    if (!appId) {
+      showStatus('Please configure Facebook App ID.', true);
+      return;
+    }
     if (typeof FB === 'undefined') {
       showStatus('Facebook SDK still loading. Try again in a moment.', true);
       return;
@@ -280,7 +152,7 @@
           showStatus('Facebook login was cancelled or failed.', true);
         }
       },
-      { scope: 'public_profile,email' }
+      { scope: 'public_profile' }
     );
   }
 
@@ -291,18 +163,10 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    const early = consumeLEIDFromURL();
-    if (early) {
-      setLEIDUser(early);
-      window.location.replace('/main/main.html');
-      return;
-    }
     const btn = document.getElementById('fb-login-btn');
     if (btn) btn.addEventListener('click', loginWithFacebook);
     const guestBtn = document.getElementById('guest-login-btn');
     if (guestBtn) guestBtn.addEventListener('click', continueAsGuest);
-    const leidBtn = document.getElementById('leid-login-btn');
-    if (leidBtn) leidBtn.addEventListener('click', loginWithLEID);
     redirectIfAuthed();
   });
 
@@ -318,10 +182,6 @@
     loginWithFacebook,
     continueAsGuest,
     completeGuest,
-    randomGuestCode,
-    loginWithLEID,
-    setLEIDUser,
-    OFFICIAL_LEWEB,
-    FB_APP_ID
+    randomGuestCode
   };
 })(window);
